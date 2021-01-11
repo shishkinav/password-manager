@@ -116,7 +116,7 @@ class TestUnitManager(unittest.TestCase):
 
         # check that the check_login method confirms the absence of a unit that hasn't been added to DB
         unit_exist = False
-        if unit_obj.check_login('non-existent-login', name='default'):
+        if unit_obj.check_login('non-existent-login', name='default', msg_need=None):
             unit_exist = True
         self.assertEqual(False, unit_exist)
 
@@ -148,7 +148,7 @@ class TestUnitManager(unittest.TestCase):
 
         # delete unit from DB, than check that it isn't exists in DB
         unit_obj.delete_unit(self._test_login, self._test_name)
-        self.assertEqual(False, True if unit_obj.check_login(self._test_login, self._test_name) else False)
+        self.assertEqual(False, True if unit_obj.check_login(self._test_login, self._test_name, msg_need=None) else False)
 
     def test_get_logins(self):
         """
@@ -263,7 +263,7 @@ class TestUnitManager(unittest.TestCase):
                                                               new_login, new_name))
 
         # check that the unit with old attributes doesn't exist in DB
-        self.assertEqual(False, True if unit_obj.check_login(self._test_login, self._test_name) else False)
+        self.assertEqual(False, True if unit_obj.check_login(self._test_login, self._test_name, msg_need=None) else False)
 
     def test_update_user(self):
         """

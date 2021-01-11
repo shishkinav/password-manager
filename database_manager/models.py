@@ -1,4 +1,4 @@
-from logging import INFO
+from logging import INFO, ERROR
 
 from sqlalchemy import (Column, ForeignKey, Integer, String, UniqueConstraint,
                         create_engine)
@@ -199,11 +199,18 @@ class UnitManager:
                 .filter(Unit.user.has(User.user == self._user)).all()
             return make_logins_obj(units)
 
-    def check_login(self, login, name):
+    def check_login(self, login, name, msg_need='not exist'):
         """Проверка существования логина"""
-        return self._session.query(Unit)\
+        if self._session.query(Unit)\
             .filter(Unit.user.has(User.user == self._user) & (Unit.login == login)
-                    & (Unit.name == name)).all()
+                    & (Unit.name == name)).all():
+            if msg_need == 'exist':
+                log_and_print(f'login "{login}" with "{name}" name already exists', level=ERROR)
+            return True
+        else:
+            if msg_need == 'not exist':
+                log_and_print(f'login "{login}" with "{name}" name not exists', level=ERROR)
+            return False
 
     def get_category(self, category):
         """Выдаем категорию, если есть, иначе создаем"""
