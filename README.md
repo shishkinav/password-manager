@@ -19,57 +19,57 @@ logins
    <br>
 
    help on using the utility:
-    ```
-    $ pwdone --help
-    ```
+   ```
+   $ pwdone --help
+   ```
    <br>   
 
    more detailed help on using utility commands:
-    ```
-    $ pwdone [command] --help
-    ```
+   ```
+   $ pwdone [command] --help
+   ```
    <br>   
 
    adding a new user:
-    ```
-    $ pwdone uadd
-    ```
+   ```
+   $ pwdone uadd
+   ```
    or using options:
-    ```
-    $ pwdone uadd -u user-name
-    ``` 
+   ```
+   $ pwdone uadd -u user-name
+   ``` 
    <br>      
 
    adding a new record in passwords DB:
-    ```
-    $ pwdone add
-    ```
+   ```
+   $ pwdone add
+   ```
    or using options:
    ```
-   $ pwdone add -u user-name -l login-for-site -a record-name
+   $ pwdone add -u user-name -l login-for-site -n record-name
    ```
    <br>   
 
    show all user records:
-    ```
-    $ pwdone show
-    ```
+   ```
+   $ pwdone show
+   ```
    <br>   
 
    get the password of record to the clipboard:
-    ```
-    $ pwdone get
-    ```
+   ```
+   $ pwdone get
+   ```
    or using options:
-    ```
-    $ pwdone get -a record-name
-    ```
+   ```
+   $ pwdone get -n record-name
+   ```
    <br>   
 
    full list of command options:
-    ```
-    $ pwdone [command] --help
-    ```
+   ```
+   $ pwdone [command] --help
+   ```
    <br>  
 
 2. Installing the utility
@@ -120,10 +120,10 @@ logins
 
     install pwdone:
     ```
-   $ cd pwdone-folder
-   $ pipenv install -e .
-   $ pipenv shell
-   ```
+    $ cd pwdone-folder
+    $ pipenv install -e .
+    $ pipenv shell
+    ```
     <br>                 
 
     2. Installing on Windows
@@ -146,17 +146,29 @@ logins
    pip3 install pipenv
    ```    
 
-    install pwdone:
-    ```
+   install pwdone:
+   ```
    $ cd pwdone-folder
    $ pipenv install -e .
    $ pipenv shell
+   ```   
+
+   making .msi installer for Windows:
    ```
-   <br>  
+   $ python setup.py bdist --format=msi
+   ```   
+
+   run the .msi installer in the 'dist' folder by double click
+   <br>
+   <br>
+   To uninstall pwdone, look in Apps & features Windows 
+   for an application like 'Python pwdone-1.0'
+   
 
 3. Backup and restore data
-    <br>
-    <br>
-    All data is stored in the 'databases' folder.
-    You can simply copy the folder 'databases' with all the contents to backup and replace the contents of the folder 'databases' with
-    the previously saved folder for restore data.
+   <br>
+   <br>
+   All data is stored in the database.sqlite file. 
+   You can simply copy the database.sqlite file for 
+   backup and replace the database.sqlite file with 
+   the one you previously saved to restore all data.

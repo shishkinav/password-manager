@@ -86,7 +86,7 @@ class UserManager:
 
     def check_user_password(self, password):
         """
-        check user and password in BD
+        check user password in BD
         """
         pass_hash = get_hash((self._user + password).encode("utf-8"))
         if self._session.query(User).filter(User.user == self._user) \
