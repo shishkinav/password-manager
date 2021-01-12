@@ -18,6 +18,7 @@ flake8-quotes = "*"
 isort = "*"
 sos = {editable = true, path = "."}
 pwdone = {editable = true, path = "."}
+pydantic = "*"
 
 [requires]
 python_version = "3.8"
