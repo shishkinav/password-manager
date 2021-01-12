@@ -60,6 +60,14 @@ def validate_password(ctx, param, value):
         return value
 
 
+def msg_login_exist(login, name):
+    log_and_print(f'login "{login}" with "{name}" name already exists', level=ERROR)
+
+
+def msg_login_not_exist(login, name):
+    log_and_print(f'login "{login}" with "{name}" name not exists', level=ERROR)
+
+
 user_argument = click.option('--user', '-u', prompt="Username",
                              help="Provide your username",
                              callback=validate_user,
@@ -225,12 +233,11 @@ def get(user, password, login, name, db):
     manager_obj = SQLAlchemyManager(db, user)
 
     if manager_obj.unit_obj.check_login(login, name):
-        pyperclip.copy(manager_obj.unit_obj
-                       .get_password(user, password, login, name))
+        pyperclip.copy(manager_obj.unit_obj.get_password(user, password, login, name))
         log_and_print(f'Password is placed on the clipboard', level=INFO)
     else:
-        log_and_print(f'login "{login}" with "{name}"'
-                      f' name not exists', level=ERROR)
+        msg_login_not_exist(login, name)
+        exit(-1)
 
 
 @cli.command()
@@ -249,8 +256,8 @@ def delete(user, password, login, name, db):
         manager_obj.unit_obj.delete_unit(login, name)
         log_and_print(f'Login "{login}" deleted', level=INFO)
     else:
-        log_and_print(f'login "{login}" with "{name}"'
-                      f' name not exists', level=ERROR)
+        msg_login_not_exist(login, name)
+        exit(-1)
 
 
 @cli.command()
@@ -271,12 +278,11 @@ def add(user, password, login, password_for_login, category, url, name, db):
     manager_obj = SQLAlchemyManager(db, user)
 
     if manager_obj.unit_obj.check_login(login, name):
-        log_and_print(f'login "{login}" with "{name}"'
-                      f' name already exists', level=ERROR)
+        msg_login_exist(login, name)
+        exit(-1)
     else:
         category = 'default' if category is None else category
-        manager_obj.unit_obj\
-            .add_unit(user, password, login, password_for_login, name, category, url)
+        manager_obj.unit_obj.add_unit(user, password, login, password_for_login, name, category, url)
         log_and_print(f'Login "{login}" added', level=INFO)
 
 
@@ -304,20 +310,18 @@ def update(user, password, login, name,
 
     new_login = login if new_login is None else new_login
 
-    if not manager_obj.unit_obj.check_login(login, name):
-        log_and_print(f'login "{login}" with "{name}"'
-                      f' name not exists', level=ERROR)
-    elif manager_obj.unit_obj.check_login(new_login, new_name) \
-            and (login != new_login or name != new_name):
-        log_and_print(f'login "{login}" with "{name}"'
-                      f' name already exists', level=ERROR)
-    else:
+    if manager_obj.unit_obj.check_login(login, name):
+        if new_login != login or new_name != name:
+            if manager_obj.unit_obj.check_login(new_login, new_name):
+                msg_login_exist(new_login, new_name)
+                exit(-1)
         password_for_login = None if password_for_login == '' else password_for_login
-        manager_obj.unit_obj\
-            .update_unit(user, password, login, name,
-                         new_login, password_for_login,
-                         new_category, url, new_name)
+        manager_obj.unit_obj.update_unit(user, password, login, name,
+                                         new_login, password_for_login, new_category, url, new_name)
         log_and_print(f'Login "{login}" updated', level=INFO)
+    else:
+        msg_login_not_exist(login, name)
+        exit(-1)
 
 
 if __name__ == '__main__':
