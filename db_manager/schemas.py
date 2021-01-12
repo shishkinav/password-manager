@@ -3,7 +3,7 @@ from pydantic import BaseModel
 
 
 class UserBase(BaseModel):
-    id: int
+    #id: int
     username: str
     password: str
 
@@ -14,7 +14,7 @@ class CategoryBase(BaseModel):
 
 
 class Unit(BaseModel):
-    id: int
+    #id: int
     name: str
     login: str
     password: str
