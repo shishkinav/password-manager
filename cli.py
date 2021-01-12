@@ -293,7 +293,8 @@ def add(user, password, login, password_for_login, category, url, name, db):
 @click.option('-n', "--name", prompt="Name", help='name', default='default')
 @click.option('-nl', "--new-login", help='new login, optional',
               default=None, required=False)
-@click.option('-nn', "--new-name", help='"default" or skip for old name, optional', required=False)
+@click.option('-nn', "--new-name", help='"default" or skip for old name, optional',
+              default=None, required=False)
 @click.option('-pl', '--password-for-login',
               prompt="New password for login (Press 'Enter' for keep old password)",
               default='',
@@ -309,6 +310,7 @@ def update(user, password, login, name,
     manager_obj = SQLAlchemyManager(db, user)
 
     new_login = login if new_login is None else new_login
+    new_name = name if new_name is None else new_name
 
     if manager_obj.unit_obj.check_login(login, name):
         if new_login != login or new_name != name:
