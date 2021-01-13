@@ -174,7 +174,7 @@ class ProxyAction:
             _username = data.pop('username')
             _password = data.pop('password')
             _new_unit = self.manager._schema(**data)
-            _new_unit = self.manager.encrypt_value(
+            _new_unit.secret = self.manager.encrypt_value(
                 username=_username, password=_password, raw=_new_unit.secret
             )
             data = _new_unit.dict()

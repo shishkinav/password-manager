@@ -11,6 +11,7 @@ class UserBase(BaseModel):
 class CategoryBase(BaseModel):
     # id: int
     name: str
+    user_id: int
 
 
 class Unit(BaseModel):
@@ -19,24 +20,23 @@ class Unit(BaseModel):
     login: str
     secret: str
     url: str
-    user: Optional[UserBase]
-    category: Optional[CategoryBase]
+    user_id: int
+    category_id: int
 
     class Config:
         orm_mode = True
 
 
 class User(UserBase):
-    units: List[Unit] = []
-    # categories: List[CategoryBase] = []
+    units: List[int] = []
+    categories: List[int] = []
 
     class Config:
         orm_mode = True
 
 
 class Category(CategoryBase):
-    units: List[Unit] = []
-    # user: Optional[UserBase]
+    units: List[int] = []
 
     class Config:
         orm_mode = True

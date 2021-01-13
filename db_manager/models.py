@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, MetaData
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 
@@ -16,9 +16,9 @@ class User(Base):
     units = relationship("Unit",
                          back_populates="user",
                          cascade="all, delete-orphan")
-    # categories = relationship("Category",
-    #                      back_populates="user",
-    #                      cascade="all, delete-orphan")
+    categories = relationship("Category",
+                         back_populates="user",
+                         cascade="all, delete-orphan")
 
 
 class Unit(Base):
@@ -32,6 +32,7 @@ class Unit(Base):
 
     user_id = Column(Integer, ForeignKey('users.id', ondelete="CASCADE"))    
     category_id = Column(Integer, ForeignKey('categories.id', ondelete="CASCADE"))
+    UniqueConstraint(name, login, user_id, name='unc_name')
     
     category = relationship("Category", back_populates="units")
     user = relationship("User", back_populates="units")
@@ -41,8 +42,11 @@ class Category(Base):
     """Определение таблицы units"""
     __tablename__ = 'categories'
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String)
+    name = Column(String, unique=True)
+    user_id = Column(Integer, ForeignKey('users.id', ondelete="CASCADE"))    
+    UniqueConstraint(name, user_id, name='unc_name')
 
+    user = relationship("User", back_populates="categories")
     units = relationship("Unit",
                          back_populates="category",
                          cascade="all, delete-orphan")
