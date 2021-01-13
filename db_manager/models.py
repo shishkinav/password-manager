@@ -27,7 +27,7 @@ class Unit(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String)
     login = Column(String)
-    password = Column(String)
+    secret = Column(String)
     url = Column(String)
 
     user_id = Column(Integer, ForeignKey('users.id', ondelete="CASCADE"))    

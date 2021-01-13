@@ -17,7 +17,7 @@ class Unit(BaseModel):
     #id: int
     name: str
     login: str
-    password: str
+    secret: str
     url: str
     user: Optional[UserBase]
     category: Optional[CategoryBase]
