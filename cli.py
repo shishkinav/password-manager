@@ -28,7 +28,7 @@ def validate_user(ctx, param, value):
     """
     Check user exists
     """
-    manager_obj = SQLAlchemyManager(FILE_DB, value)
+    manager_obj = SQLAlchemyManager(ctx.obj['DB'], value)
 
     if not manager_obj.user_obj.check_user():
         log_and_print(f'User named "{value}" not exists', level=ERROR)
@@ -51,7 +51,7 @@ def validate_password(ctx, param, value):
         return value
 
     user = ctx.obj['USER']
-    manager_obj = SQLAlchemyManager(FILE_DB, user)
+    manager_obj = SQLAlchemyManager(ctx.obj['DB'], user)
 
     if not manager_obj.user_obj.check_user_password(value):
         log_and_print(f'Incorrect password for user named "{user}"', level=ERROR)
@@ -81,8 +81,9 @@ password_argument = click.option('--password', '-p', help="Provide your password
 # @click.option('-n/-not-name', help='print or not name')
 @click.option('-c/-not-category', help='print or not category')
 @click.option('-u/-not-url', help='print or not url')
+@click.option("--db", default=FILE_DB, required=False, hidden=True)
 @click.pass_context
-def cli(ctx, c, u):
+def cli(ctx, c, u, db):
     """
     pwdone is a multi-user, multi-platform command-line utility
     for storing and organizing passwords and another info for logins
@@ -118,7 +119,8 @@ def cli(ctx, c, u):
             'name': True,
             'category': c,
             'url': u
-        }
+        },
+        'DB': db,
     }
 
 
@@ -129,12 +131,12 @@ def cli(ctx, c, u):
               default=os.getlogin)
 @click.option('--password', '-p', help="Provide your password",
               prompt=True, hide_input=True)
-@click.option("--db", default=FILE_DB, required=False, hidden=True)
-def uadd(user, password, db):
+@click.pass_context
+def uadd(ctx, user, password):
     """
     add user command
     """
-    manager_obj = SQLAlchemyManager(db, user)
+    manager_obj = SQLAlchemyManager(ctx.obj['DB'], user)
 
     if manager_obj.user_obj.check_user():
         log_and_print(f'User named "{user}" already exists', level=ERROR)
@@ -154,20 +156,20 @@ def uadd(user, password, db):
               default='',
               help="Provide new password for user", hide_input=True)
 @click.confirmation_option(prompt='Are you sure you want to update user data?')
-@click.option("--db", default=FILE_DB, required=False, hidden=True)
-def uupdate(user, password,
-            new_username, new_password, db):
+@click.pass_context
+def uupdate(ctx, user, password,
+            new_username, new_password):
     """
     update username (and password) command
     """
-    manager_obj = SQLAlchemyManager(db, user)
+    manager_obj = SQLAlchemyManager(ctx.obj['DB'], user)
 
     new_password = None if new_password == '' else new_password
     if manager_obj.user_obj.check_user(new_username) and not new_password:
         log_and_print(f'User named "{new_username}" already exists '
                       f'and no new password is given', level=ERROR)
     else:
-        manager_obj.user_obj.update_user(db, password, new_username, new_password)
+        manager_obj.user_obj.update_user(ctx.obj['DB'], password, new_username, new_password)
         log_and_print(f'User "{user}" updated. New username is "{new_username}"',
                       level=INFO)
 
@@ -175,24 +177,24 @@ def uupdate(user, password,
 @cli.command()
 @user_argument
 @password_argument
-@click.option("--db", default=FILE_DB, required=False, hidden=True)
-def udelete(user, password, db):
+@click.pass_context
+def udelete(ctx, user, password):
     """
     delete user command
     """
-    manager_obj = SQLAlchemyManager(db, user)
+    manager_obj = SQLAlchemyManager(ctx.obj['DB'], user)
 
     manager_obj.user_obj.del_user()
     log_and_print(f'User named "{user}" deleted', level=INFO)
 
 
 @cli.command()
-@click.option("--db", default=FILE_DB, required=False, hidden=True)
-def ushow(db):
+@click.pass_context
+def ushow(ctx):
     """
     show users command
     """
-    manager_obj = SQLAlchemyManager(db)
+    manager_obj = SQLAlchemyManager(ctx.obj['DB'])
 
     users = manager_obj.user_obj.all_users()
     for user in users:
@@ -207,12 +209,11 @@ def ushow(db):
                                        'skip for all logins, optional',
               default=None, required=False)
 @click.pass_context
-@click.option("--db", default=FILE_DB, required=False, hidden=True)
-def show(ctx, user, password, category, db):
+def show(ctx, user, password, category):
     """
     show logins command
     """
-    manager_obj = SQLAlchemyManager(db, user)
+    manager_obj = SQLAlchemyManager(ctx.obj['DB'], user)
 
     logins = manager_obj.unit_obj.get_logins(category)
     units_composition_obj = UnitsComposition(logins)
@@ -227,12 +228,12 @@ def show(ctx, user, password, category, db):
 @password_argument
 @click.option('-l', "--login", prompt="Login", help="Provide login")
 @click.option('-n', "--name", prompt="Name", help='name', default='default')
-@click.option("--db", default=FILE_DB, required=False, hidden=True)
-def get(user, password, login, name, db):
+@click.pass_context
+def get(ctx, user, password, login, name):
     """
     get password by login command
     """
-    manager_obj = SQLAlchemyManager(db, user)
+    manager_obj = SQLAlchemyManager(ctx.obj['DB'], user)
 
     if manager_obj.unit_obj.check_login(login, name):
         pyperclip.copy(manager_obj.unit_obj.get_password(user, password, login, name))
@@ -247,12 +248,12 @@ def get(user, password, login, name, db):
 @password_argument
 @click.option('-l', "--login", prompt="Login", help="Provide login")
 @click.option('-n', "--name", prompt="Name", help='name', default='default')
-@click.option("--db", default=FILE_DB, required=False, hidden=True)
-def delete(user, password, login, name, db):
+@click.pass_context
+def delete(ctx, user, password, login, name):
     """
     delete login and password command
     """
-    manager_obj = SQLAlchemyManager(db, user)
+    manager_obj = SQLAlchemyManager(ctx.obj['DB'], user)
 
     if manager_obj.unit_obj.check_login(login, name):
         manager_obj.unit_obj.delete_unit(login, name)
@@ -272,12 +273,13 @@ def delete(user, password, login, name, db):
 @click.option('-c', "--category", help='"default" or skip for default category, optional',
               default=None, required=False)
 @click.option('-ur', "--url", help='url, optional', default=None, required=False)
-@click.option("--db", default=FILE_DB, required=False, hidden=True)
-def add(user, password, login, password_for_login, category, url, name, db):
+@click.pass_context
+def add(ctx, user, password, login,
+        password_for_login, category, url, name):
     """
     add login and password command
     """
-    manager_obj = SQLAlchemyManager(db, user)
+    manager_obj = SQLAlchemyManager(ctx.obj['DB'], user)
 
     if manager_obj.unit_obj.check_login(login, name):
         msg_login_exist(login, name)
@@ -304,12 +306,12 @@ def add(user, password, login, password_for_login, category, url, name, db):
 @click.option('-nc', "--new-category", help='"default" or skip for old category, optional',
               default=None, required=False)
 @click.option('-ur', "--url", help='url, optional', default=None, required=False)
-@click.option("--db", default=FILE_DB, required=False, hidden=True)
-def update(user, password, login, name,
-           new_login, new_name, password_for_login, new_category, url, db):
+@click.pass_context
+def update(ctx, user, password, login, name,
+           new_login, new_name, password_for_login, new_category, url):
     """Update unit"""
 
-    manager_obj = SQLAlchemyManager(db, user)
+    manager_obj = SQLAlchemyManager(ctx.obj['DB'], user)
 
     new_login = login if new_login is None else new_login
     new_name = name if new_name is None else new_name
