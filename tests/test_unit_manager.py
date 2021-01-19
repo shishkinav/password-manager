@@ -163,6 +163,7 @@ class TestUnitManager(unittest.TestCase):
                 self['name'] = []
                 self['category'] = []
                 self['url'] = []
+                super().__init__()
 
             def append(self, logins, name='default', category='default', url=''):
                 self['logins'].append(logins)
