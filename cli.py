@@ -168,6 +168,8 @@ def uupdate(user, password,
                       f'and no new password is given', level=ERROR)
     else:
         manager_obj.user_obj.update_user(db, password, new_username, new_password)
+        log_and_print(f'User "{user}" updated. New username is "{new_username}"',
+                      level=INFO)
 
 
 @cli.command()
