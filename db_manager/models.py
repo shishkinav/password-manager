@@ -39,7 +39,7 @@ class Unit(Base):
 
 
 class Category(Base):
-    """Определение таблицы units"""
+    """Определение таблицы categories"""
     __tablename__ = 'categories'
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True)
