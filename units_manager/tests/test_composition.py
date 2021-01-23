@@ -22,8 +22,9 @@ class TestComposition(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         """Очистка тестовой базы"""
+        cls.user_proxy.manager.session.close_all()
         cls.user_proxy.manager.destroy_db()
-    
+
     def test_print_users(self):
         """Проверка количества пользователей в БД"""
         self.user_proxy.add_obj({
@@ -32,6 +33,6 @@ class TestComposition(unittest.TestCase):
         })
         _users = self.user_proxy.manager.get_objects(filters={})
         _composition = PrintComposition()
-        _composition.prepare_data(data_objects=_users, box_attrs=["username"])
-        
-        
+        data = _composition.prepare_data(data_objects=_users, box_attrs=["id", "username"])
+        for row in data:
+            print(row)

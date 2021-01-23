@@ -88,21 +88,18 @@ class TimeoutController:
 
 class PrintComposition:
     """Класс формирования единой выдачи"""
-    # _boxs = {
-    #     "users": ['username'],
-    #     "units": ['name', 'login']
-    # }
-
-    def get_format_row(self, ) -> str:
+    def __get_format_row(self, count: int) -> str:
         """[obj, obj]"""
         # получение формата 
-        pass
+        return "{:^30}" * count
 
     def prepare_data(self, data_objects: List, box_attrs: List = []) -> List[str]:
         # формирование строки заголовка и строки данных по формату
+        format_row = self.__get_format_row(len(box_attrs))
+        data = [format_row.format(*box_attrs)]
         for obj in data_objects:
-            [
-                print(
-                    getattr(obj, name_attr, None)
-                ) for name_attr in box_attrs
-            ]
+            obj_lst = []
+            for name_attr in box_attrs:
+                obj_lst.append(getattr(obj, name_attr, None))
+            data.append(format_row.format(*obj_lst))
+        return data
