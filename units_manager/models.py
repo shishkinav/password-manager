@@ -2,7 +2,7 @@ import datetime as dt
 from typing import List
 from settings import TIME_SESSION_CLOSE
 
-
+# depricated
 class UnitsComposition:
     """Класс компоновки юнитов на выдачу
     
@@ -89,17 +89,18 @@ class TimeoutController:
 class PrintComposition:
     """Класс формирования единой выдачи"""
     def __get_format_row(self, count: int) -> str:
-        """[obj, obj]"""
-        # получение формата 
+        """Получение стандартного форматирования для строки вывода""" 
         return "{:^30}" * count
 
     def prepare_data(self, data_objects: List, box_attrs: List = []) -> List[str]:
-        # формирование строки заголовка и строки данных по формату
+        """Сборка списка строк для вывода по переданным данным"""
         format_row = self.__get_format_row(len(box_attrs))
         data = [format_row.format(*box_attrs)]
         for obj in data_objects:
-            obj_lst = []
-            for name_attr in box_attrs:
-                obj_lst.append(getattr(obj, name_attr, None))
-            data.append(format_row.format(*obj_lst))
+            massive_value = [getattr(obj, name_attr, 'empty') for name_attr in box_attrs]
+            if 'empty' in massive_value:
+                raise Exception
+            data.append(
+                format_row.format(*massive_value)
+            )
         return data
