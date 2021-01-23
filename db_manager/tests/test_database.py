@@ -1,5 +1,5 @@
 import unittest
-from db_manager import database as db_sql
+from db_manager import managers as db_sql
 from pprint import pprint
 
 
