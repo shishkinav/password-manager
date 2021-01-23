@@ -84,3 +84,8 @@ class TimeoutController:
         """
         return dt.datetime.today() - check_datetime \
             < dt.timedelta(seconds=self._default_time_session)
+
+
+class PrintComposition:
+    """Класс формирования единой выдачи"""
+    pass
