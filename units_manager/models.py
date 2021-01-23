@@ -1,5 +1,5 @@
 import datetime as dt
-
+from typing import List
 from settings import TIME_SESSION_CLOSE
 
 
@@ -88,4 +88,21 @@ class TimeoutController:
 
 class PrintComposition:
     """Класс формирования единой выдачи"""
-    pass
+    # _boxs = {
+    #     "users": ['username'],
+    #     "units": ['name', 'login']
+    # }
+
+    def get_format_row(self, ) -> str:
+        """[obj, obj]"""
+        # получение формата 
+        pass
+
+    def prepare_data(self, data_objects: List, box_attrs: List = []) -> List[str]:
+        # формирование строки заголовка и строки данных по формату
+        for obj in data_objects:
+            [
+                print(
+                    getattr(obj, name_attr, None)
+                ) for name_attr in box_attrs
+            ]
