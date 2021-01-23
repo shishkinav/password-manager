@@ -22,7 +22,7 @@ class TestDatabase(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         """Очистка тестовой базы"""
-        cls.user_proxy.manager.clear_db()
+        cls.user_proxy.manager.destroy_db()
     
     def test_count_users(self):
         """Проверка количества пользователей в БД"""

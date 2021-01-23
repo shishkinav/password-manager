@@ -28,7 +28,7 @@ class DBManager:
     def session(self):
         return self.session_local()
         
-    def clear_db(self):
+    def destroy_db(self):
         """Закрытие сессии и удаление БД"""
         self.session.close()
         self.file_db.unlink()
