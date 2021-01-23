@@ -1,12 +1,9 @@
-from logging import INFO
-
 from sqlalchemy import (Column, ForeignKey, Integer, String, UniqueConstraint,
                         create_engine)
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 
 from encryption_manager.models import get_hash, get_secret_obj
-from log_manager.models import log_and_print
 from settings import FILE_DB
 
 Base = declarative_base()
@@ -131,8 +128,6 @@ class UserManager:
             .filter(User.user == self._user).update({"user": new_user, "password": pass_hash})
 
         self._session.commit()
-        log_and_print(f'User "{self._user}" updated. New username is "{new_user}"',
-                      level=INFO)
 
     def del_user(self):
         """
