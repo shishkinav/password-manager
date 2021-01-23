@@ -1,7 +1,7 @@
 import pathlib
 
 FILE_DB = pathlib.Path(__file__).parent / 'database.sqlite'
-
+FILE_TEST_DB = pathlib.Path(__file__).parent / 'db_test.sqlite'
 LOGS_PATH = pathlib.Path.cwd() / 'logs' / 'common.log'
 
 TIME_SESSION_CLOSE = 15 * 60  # дефолтное время в секундах, отведенное на длительность сессии
