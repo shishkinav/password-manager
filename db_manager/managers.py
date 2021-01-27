@@ -183,6 +183,21 @@ class ProxyAction:
     def update_obj(self, filters: dict, data: dict):
         """Обновление объектов по проксируемому менеджеру,
         удовлетворяющих условиям в filters, замена данных указанных в data"""
+        if not self.check_obj(filters=filters):
+            return False
+
+        if self.__check_manager(UserManager):
+            _password = data.get('password')
+            if not _password:
+                return False  # пароль должен быть передан даже если он не меняется для корректного пересохранения хэша
+
+            _username = data.get('username')
+            if not _username:
+                _username = self.manager.get_obj(filters=filters).username
+            data['password'] = self.manager.generate_hash(_username + _password)
+
+            # если есть юниты, их надо перешифровать ......
+
         return self.manager.update_objects(filters=filters, data=data)
 
     def delete_obj(self, filters: dict) -> bool:
