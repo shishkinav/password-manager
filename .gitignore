@@ -131,3 +131,6 @@ tmp.py
 pyproject.toml
 *.sqlite
 *.sqlite3
+
+# логирование 
+logs/*

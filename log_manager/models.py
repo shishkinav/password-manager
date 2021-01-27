@@ -4,6 +4,8 @@ from logging.handlers import TimedRotatingFileHandler
 from settings import LOGS_PATH
 
 
+# depricated - удаление сразу после того как основной код перегрузим на нормальный логгер
+
 def change_filename(filename):
     filename_parts = filename.rsplit('.', maxsplit=2)
     if filename_parts[-1] == 'log':

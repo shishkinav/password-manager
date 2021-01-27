@@ -1,6 +1,11 @@
+import time
 import unittest
 from db_manager import managers as db_sql
-from pprint import pprint
+import logging
+import log_manager.config
+
+
+logger = logging.getLogger(__name__)
 
 
 class TestDatabase(unittest.TestCase):
@@ -95,4 +100,12 @@ class TestDatabase(unittest.TestCase):
             data={"units": _unit})
         _units = self.unit_proxy.manager.get_objects(filters={"user": _user})
         self.assertEqual(len(_units), 1)
-        
+
+    def test_logger(self):
+        """Проверяем работоспособность настроенного логгера"""
+        from time import sleep
+
+        for _ in range(10):
+            logger.debug('Проверка')
+            logger.error('Я ошибка')
+            time.sleep(1)
