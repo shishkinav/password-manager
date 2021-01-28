@@ -16,7 +16,7 @@ LOGGING_CONFIG = {
         'formatters': {
             'detailed': {
                 'class': 'logging.Formatter',
-                'format': '%(asctime)s %(name)-15s %(levelname)-8s %(message)s'
+                'format': '%(asctime)s %(name)-15s %(levelname)-8s %(funcName)s(%(lineno)d): %(message)s'
             }
         },
         'handlers': {
