@@ -1,6 +1,8 @@
 import datetime as dt
 from typing import List
 from settings import TIME_SESSION_CLOSE
+from operator import itemgetter, attrgetter
+from db_manager.models import Base
 
 # depricated
 class UnitsComposition:
@@ -92,15 +94,39 @@ class PrintComposition:
         """Получение стандартного форматирования для строки вывода""" 
         return "{:^30}" * count
 
-    def prepare_data(self, data_objects: List, box_attrs: List = []) -> List[str]:
-        """Сборка списка строк для вывода по переданным данным"""
+    def __sorted_by_attrs(self, data_objects: List[Base] , sort_values_attrs: List[str], 
+        reverse=False) -> List:
+        """Сортировка объектов по указанному атрибуту.
+        Возрастающая или убывающая зависит от reverse"""
+        return sorted(data_objects, key=attrgetter(*sort_values_attrs), reverse=reverse)
+
+    def prepare_data(self, data_objects: List[Base], box_attrs: List[str],
+        sort_values_attrs: List[str] = [], reverse=False) -> List[str]:
+        """Сборка списка строк для вывода по переданным данным
+        Input:
+            data_objects - список экземпляров объектов из БД
+            box_attrs - список string (атрибутов объекта), которые будут участвовать в выводе
+            sort_values_attrs - список string(названий атрибутов объекта), по которым будет
+                производиться сортировка (при указании более одного string сначала применяется 
+                сортировка по первому указанному атрибуту, вторичная сортировка по второму и т.д.)
+            reverse - порядок сортировки списка (True - по убыванию, False - по возрастанию)
+            
+        Если sort_values_attrs не переданы, сортировка будет произведена по первому атрибуту, 
+            который передан в box_attrs"""
+        if not sort_values_attrs:
+            sort_values_attrs = [box_attrs[0],]
         format_row = self.__get_format_row(len(box_attrs))
-        data = [format_row.format(*box_attrs)]
-        for obj in data_objects:
+        _data_external = [format_row.format(*box_attrs)]
+        data_sorted = self.__sorted_by_attrs(
+            data_objects=data_objects,
+            sort_values_attrs=sort_values_attrs,
+            reverse=reverse
+        )
+        for obj in data_sorted:
             massive_value = [getattr(obj, name_attr, 'empty') for name_attr in box_attrs]
             if 'empty' in massive_value:
                 raise Exception
-            data.append(
+            _data_external.append(
                 format_row.format(*massive_value)
             )
-        return data
+        return _data_external
