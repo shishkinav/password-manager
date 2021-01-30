@@ -67,7 +67,7 @@ class TestComposition(unittest.TestCase):
             self.assertTrue(
                 s in data[i],
                 msg=f'Порядок сортировки нарушен: текст "{s}" должен присутствовать в строке '
-                    f'c порядковым номером {i} и значением "{data[i]}"'
+                    f'c порядковым номером {i}, но возвращённое значение строки "{data[i]}"'
             )
 
     def test_descending_sort(self):
@@ -84,5 +84,5 @@ class TestComposition(unittest.TestCase):
             self.assertTrue(
                 s in data[i],
                 msg=f'Порядок сортировки нарушен: текст "{s}" должен присутствовать в строке '
-                    f'c порядковым номером {i} и значением "{data[i]}"'
+                    f'c порядковым номером {i}, но возвращённое значение строки "{data[i]}"'
             )
