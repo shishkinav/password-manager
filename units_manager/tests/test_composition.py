@@ -19,7 +19,7 @@ class TestComposition(unittest.TestCase):
         # создаём тестовых пользователей в БД
         for _username, _password in (
             (self._login_user, self._password_user),
-            ("second", "second_password"),
+            ('second', 'second_password'),
             ('special', 'my_password'),
             ('bamby', 'hide_password')
         ):
@@ -45,7 +45,6 @@ class TestComposition(unittest.TestCase):
     def test_print_users(self):
         """Количественная проверка возвращаемого списка после подготовки
         данных на вывод"""
-        
         _users = self.user_proxy.manager.get_objects(filters={})
         
         data = self._composition.prepare_data(
@@ -54,7 +53,7 @@ class TestComposition(unittest.TestCase):
             )
         
         self.assertTrue(len(data) == 5,
-            msg="Количество строк в подготовленных данных не соответствует")
+                        msg="Количество строк в подготовленных данных не соответствует")
 
     def test_ascending_sort(self):
         """Проверка сортировки по возрастанию"""
@@ -62,7 +61,7 @@ class TestComposition(unittest.TestCase):
         data = self._composition.prepare_data(
                 data_objects=_users, 
                 box_attrs=["id", "username"],
-                sort_values_attrs=['username']
+                sort_values_attrs=["username"]
             )
         for i, s in enumerate(('bamby', 'second', 'special', 'temp'), start=1):
             self.assertTrue(
@@ -77,7 +76,7 @@ class TestComposition(unittest.TestCase):
         data = self._composition.prepare_data(
                 data_objects=_users, 
                 box_attrs=["id", "username"],
-                sort_values_attrs=['username'],
+                sort_values_attrs=["username"],
                 reverse=True
             )
 
