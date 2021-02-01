@@ -3,7 +3,7 @@ from pydantic import BaseModel
 
 
 class UserBase(BaseModel):
-    #id: int
+    # id: int
     username: str
     password: str
 
@@ -15,13 +15,13 @@ class CategoryBase(BaseModel):
 
 
 class Unit(BaseModel):
-    #id: int
+    # id: int
     name: str
     login: str
     secret: str
-    url: str
+    url: str = ''
     user_id: int
-    category_id: int
+    category_id: int = 0
 
     class Config:
         orm_mode = True

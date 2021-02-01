@@ -1,6 +1,5 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.orm import Session
 from settings import FILE_DB, FILE_TEST_DB
 from db_manager import models, schemas
 from pydantic import ValidationError
@@ -39,7 +38,7 @@ class DBManager:
 
     def get_obj(self, filters: dict) -> Any:
         """Получить объект модели с учетом указанных фильтров"""
-        return self.session.query(self._model).filter_by(**filters).first() 
+        return self.session.query(self._model).filter_by(**filters).first()
 
     def create_obj(self, data: dict) -> bool:
         """Универсальный метод создания объекта в БД с 
@@ -221,7 +220,7 @@ class ProxyAction:
             raise TypeError
         _username = filters.pop('username')
         _password = filters.pop('password')
-        _obj = self.manager.get_obj(**filters)
+        _obj = self.manager.get_obj(filters)
         if not _obj:
             raise IndexError
         return self.manager.decrypt_value(
