@@ -16,7 +16,8 @@ class DBManager:
     def __init__(self, model: models.Base, schema: schemas.BaseModel, prod_db=True):
         self._model = model
         self._schema = schema
-        self.file_db: Path = FILE_DB if prod_db else FILE_TEST_DB
+        self.prod_db = prod_db
+        self.file_db: Path = FILE_DB if self.prod_db else FILE_TEST_DB
         self.file_db.touch()
         self.bd_url = f'sqlite:///{self.file_db}'
         engine = create_engine(self.bd_url, connect_args={"check_same_thread": False})
@@ -169,6 +170,15 @@ class ProxyAction:
             _value = ''.join([x for x in _data.values()])
             _new_user.password = self.manager.generate_hash(_value)
             data = _new_user.dict()
+            if self.manager.create_obj(data=data):
+                _new_user = self.manager.get_obj(filters={"username": data["username"]})
+                # для созданного пользователя создаём дефолтную категорию в БД
+                category_proxy = ProxyAction(CategoryManager(prod_db=self.manager.prod_db))
+                if category_proxy.add_obj({"name": "default",
+                                           "user_id": _new_user.id}):
+                    return True
+                return False
+            return False
         if self.__check_manager(UnitManager):
             _username = data.pop('username')
             _password = data.pop('password')
@@ -177,7 +187,14 @@ class ProxyAction:
                 username=_username, password=_password, raw=_new_unit.secret
             )
             data = _new_unit.dict()
-        return self.manager.create_obj(data=data)        
+            if data.get('category_id') == 0:
+                user_proxy = ProxyAction(UserManager(prod_db=self.manager.prod_db))
+                _user = user_proxy.manager.get_obj(filters={"username": _username})
+                category_proxy = ProxyAction(CategoryManager(prod_db=self.manager.prod_db))
+                data['category_id'] = category_proxy.manager.get_obj(
+                    filters={"user_id": _user.id, "name": "default"}
+                ).id
+        return self.manager.create_obj(data=data)
 
     def update_obj(self, filters: dict, data: dict):
         """Обновление объектов по проксируемому менеджеру,

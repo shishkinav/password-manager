@@ -42,8 +42,9 @@ class Category(Base):
     """Определение таблицы categories"""
     __tablename__ = 'categories'
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, unique=True)
-    user_id = Column(Integer, ForeignKey('users.id', ondelete="CASCADE"))    
+    name = Column(String)
+
+    user_id = Column(Integer, ForeignKey('users.id', ondelete="CASCADE"))
     UniqueConstraint(name, user_id, name='unc_name')
 
     user = relationship("User", back_populates="categories")
