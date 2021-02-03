@@ -21,7 +21,7 @@ class Unit(BaseModel):
     secret: str
     url: str = ''
     user_id: int
-    category_id: int = 0
+    category_id: int
 
     class Config:
         orm_mode = True

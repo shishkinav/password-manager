@@ -170,15 +170,6 @@ class ProxyAction:
             _value = ''.join([x for x in _data.values()])
             _new_user.password = self.manager.generate_hash(_value)
             data = _new_user.dict()
-            if self.manager.create_obj(data=data):
-                _new_user = self.manager.get_obj(filters={"username": data["username"]})
-                # для созданного пользователя создаём дефолтную категорию в БД
-                category_proxy = ProxyAction(CategoryManager(prod_db=self.manager.prod_db))
-                if category_proxy.add_obj({"name": "default",
-                                           "user_id": _new_user.id}):
-                    return True
-                return False
-            return False
         if self.__check_manager(UnitManager):
             _username = data.pop('username')
             _password = data.pop('password')
@@ -187,13 +178,8 @@ class ProxyAction:
                 username=_username, password=_password, raw=_new_unit.secret
             )
             data = _new_unit.dict()
-            if data.get('category_id') == 0:
-                user_proxy = ProxyAction(UserManager(prod_db=self.manager.prod_db))
-                _user = user_proxy.manager.get_obj(filters={"username": _username})
-                category_proxy = ProxyAction(CategoryManager(prod_db=self.manager.prod_db))
-                data['category_id'] = category_proxy.manager.get_obj(
-                    filters={"user_id": _user.id, "name": "default"}
-                ).id
+        if self.__check_manager(CategoryManager):
+            self.manager._schema(**data)
         return self.manager.create_obj(data=data)
 
     def update_obj(self, filters: dict, data: dict):
@@ -243,3 +229,18 @@ class ProxyAction:
         return self.manager.decrypt_value(
             username=_username, password=_password, enc=_obj.secret
         )
+
+    def get_prepared_category(self, filters: dict):
+        """Получить объект модели категории с учетом указанных фильтров.
+        Если в фильтрах не указано название категории,
+        добавляем фильтр для "name" со значением по-умолчанию: "default".
+        Если объект не найден, пробуем добавить его с атрибутами на основе фильтров"""
+        if not self.__check_manager(CategoryManager):
+            raise TypeError
+        if not filters.get("name"):
+            filters["name"] = "default"  # значение по-умолчанию
+        if not self.check_obj(filters=filters):
+            self.add_obj(data=filters)
+            if not self.check_obj(filters=filters):
+                raise IndexError
+        return self.manager.get_obj(filters=filters)

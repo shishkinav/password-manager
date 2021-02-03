@@ -35,7 +35,8 @@ class TestManager(unittest.TestCase):
             "name": self._name_unit,
             "login": self._login_unit,
             "secret": self._password_unit,
-            "user_id": self._user.id
+            "user_id": self._user.id,
+            "category_id": self.category_proxy.get_prepared_category({"user_id": self._user.id}).id
         })
 
     @classmethod
@@ -209,7 +210,8 @@ class TestUnitManager(TestManager):
                 "name": self._name_unit,
                 "login": self._login_unit,
                 "secret": self._password_unit,
-                "user_id": self._user.id
+                "user_id": self._user.id,
+                "category_id": self.category_proxy.get_prepared_category({"user_id": self._user.id}).id
             })
 
         # добавляем тестовому пользователю другой юнит с логином, отличным от ранее добавленного
@@ -219,7 +221,8 @@ class TestUnitManager(TestManager):
             "name": self._name_unit,
             "login": "other login",
             "secret": self._password_unit,
-            "user_id": self._user.id
+            "user_id": self._user.id,
+            "category_id": self.category_proxy.get_prepared_category({"user_id": self._user.id}).id
         })
 
         # проверяем, что кол-во юнитов пользователя изменилось
