@@ -74,6 +74,23 @@ class TestUserManager(TestManager):
         self.assertFalse(self.user_proxy.check_obj(filters={"username": "nonexistent username"}),
                          msg="Несоответствие проверки отсутствия экземпляра пользователя в БД")
 
+    def test_check_user_password(self):
+        """Проверка наличия в БД пользователя с указанными именем и паролем через ProxyAction.check_user_password"""
+        # пользователь создан вызовом self.user_proxy.add_obj в setUp-методе
+        # проверяем наличие в БД пользователя с указанными именем и паролем
+        self.assertTrue(self.user_proxy.check_user_password(
+                        self._login_user, self._password_user),
+                        msg="Наличие пользователя в БД с указанными именем и паролем не подтверждено")
+
+        # проверяем, что метод check_user_password подтверждает отсутствие пользователя
+        # при несоответствии имени или пароля
+        self.assertFalse(self.user_proxy.check_user_password(
+                         "nonexistent username", self._password_user),
+                         msg="Несоответствие проверки отсутствия пользователя в БД")
+        self.assertFalse(self.user_proxy.check_user_password(
+                         self._login_user, "nonexistent password"),
+                         msg="Несоответствие проверки отсутствия пользователя в БД")
+
     def test_add_next_users(self):
         """Проверка создания нескольких пользователей в БД через ProxyAction.add_obj"""
         # первый пользователь создан вызовом self.user_proxy.add_obj в setUp-методе
