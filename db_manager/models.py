@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import Column, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.declarative import declarative_base
 
@@ -11,14 +11,14 @@ class User(Base):
     __tablename__ = 'users'
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, nullable=False, unique=True,
-                  sqlite_on_conflict_unique='FAIL')
+                      sqlite_on_conflict_unique='FAIL')
     password = Column(String, nullable=False)
     units = relationship("Unit",
                          back_populates="user",
                          cascade="all, delete-orphan")
     categories = relationship("Category",
-                         back_populates="user",
-                         cascade="all, delete-orphan")
+                              back_populates="user",
+                              cascade="all, delete-orphan")
 
 
 class Unit(Base):
@@ -51,5 +51,3 @@ class Category(Base):
     units = relationship("Unit",
                          back_populates="category",
                          cascade="all, delete-orphan")
-    
-
