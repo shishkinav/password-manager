@@ -63,6 +63,17 @@ class TestUserManager(TestManager):
         self.assertEqual(pass_hash, _user.__dict__.get("password"),
                          msg="Хэш пароля пользователя в БД не соответствует")
 
+    def test_check_user(self):
+        """Проверка наличия/отсутствия экземпляра пользователя в БД через ProxyAction.check_obj"""
+        # пользователь создан вызовом self.user_proxy.add_obj в setUp-методе
+        # проверяем наличие экземпляра пользователя в БД
+        self.assertTrue(self.user_proxy.check_obj(filters={"username": self._login_user}),
+                        msg="Наличие экземпляра пользователя в БД не подтверждено")
+
+        # проверяем, что метод check_obj подтверждает отсутствие экземпляра несуществующего пользователя
+        self.assertFalse(self.user_proxy.check_obj(filters={"username": "nonexistent username"}),
+                         msg="Несоответствие проверки отсутствия экземпляра пользователя в БД")
+
     def test_add_next_users(self):
         """Проверка создания нескольких пользователей в БД через ProxyAction.add_obj"""
         # первый пользователь создан вызовом self.user_proxy.add_obj в setUp-методе
