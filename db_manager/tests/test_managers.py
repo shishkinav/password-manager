@@ -40,6 +40,18 @@ class TestManager(unittest.TestCase):
         cls.category_proxy.delete_obj(filters={})
         cls.user_proxy.delete_obj(filters={})
 
+    def _add_test_unit(self, login=_login_unit):
+        """Добавление тестового юнита тестовому пользователю в БД"""
+        self.unit_proxy.add_obj({
+            "username": self._login_user,
+            "password": self._password_user,
+            "name": self._name_unit,
+            "login": login,
+            "secret": self._password_unit,
+            "user_id": self._user.id,  # объект тестового пользователя формируется в setUp-методе
+            "category_id": self.category_proxy.get_prepared_category({"user_id": self._user.id}).id
+        })
+
 
 # @unittest.skip("Temporary skip")
 class TestUserManager(TestManager):
@@ -122,7 +134,7 @@ class TestUserManager(TestManager):
         self.assertNotEqual(self._user.__dict__.get("password"), _other_user.__dict__.get("password"),
                             msg="Различие хэшей паролей пользователей в БД не подтверждено")
 
-    def __checks_after_update_user(self, old_username, old_password=None, new_username=None, new_password=None):
+    def __user_checks_after_update_user(self, old_username, old_password=None, new_username=None, new_password=None):
         """Проверка наличия экземпляров и атрибутов пользователей после применения ProxyAction.update_obj"""
         if new_username:
             # проверяем, что пользователь со старым имененем отсутствует в БД
@@ -153,60 +165,112 @@ class TestUserManager(TestManager):
             self.assertTrue(self.user_proxy.check_user_password(old_username, new_password),
                             msg="После изменения пароля имя и пароль пользователя в БД не соответствуют")
 
-    def test_update_user_without_units(self):
-        """Проверка изменения атрибутов пользователя без юнитов в БД через ProxyAction.update_obj"""
-        # 1. Изменяем имя пользователя
-        update_result = self.user_proxy.update_obj(filters={"username": self._login_user}, data={
-                            "username": "other_username",
-                            "password": self._password_user  # пароль мы не меняем, но передаём его, чтобы изменить хэш
-                        })
-        self.assertTrue(update_result,
-                        msg="Изменение имени пользователя с помощью ProxyAction.update_obj не выполнено")
-        # проверяем результат изменения
-        self.__checks_after_update_user(old_username=self._login_user, old_password=self._password_user,
-                                        new_username="other_username")
+    def __unit_checks_after_update_user(self, new_username=TestManager._login_user,
+                                        new_password=TestManager._password_user):
+        """Проверка наличия экземпляров и атрибутов юнитов после изменения
+        атрибутов пользователя с применением ProxyAction.update_obj"""
+        # проверяем, что количество юнитов у пользователя не изменилось
+        _units = self.unit_proxy.manager.get_objects(filters={"user_id": self._user.id})
+        self.assertEqual(2, len(_units),
+                         msg="Количество юнитов пользователя в БД не соответствует")
 
-        # 2. Изменяем пароль пользователя
-        update_result = self.user_proxy.update_obj(filters={"username": "other_username"}, data={
-                            "password": "other_password"
-                        })
-        self.assertTrue(update_result,
-                        msg="Изменение пароля пользователя с помощью ProxyAction.update_obj не выполнено")
-        # проверяем результат изменения
-        self.__checks_after_update_user(old_username="other_username",
-                                        new_password="other_password")
+        # проверяем, что юниты пользователя идентифицируются по ключу name + login + user_id
+        self.assertTrue(self.unit_proxy.check_obj(filters={"name": self._name_unit, "login": self._login_unit,
+                                                           "user_id": self._user.id}),
+                        msg="После изменения атрибутов пользователя его юнит не идентифицируется")
+        self.assertTrue(self.unit_proxy.check_obj(filters={"name": self._name_unit, "login": "other login",
+                                                           "user_id": self._user.id}),
+                        msg="После изменения атрибутов пользователя его юнит не идентифицируется")
 
-        # 3. Изменяем имя пользователя и пароль одновременно
-        update_result = self.user_proxy.update_obj(filters={"username": "other_username"}, data={
-                            "username": "new_username",
-                            "password": "new_password"
-                        })
-        self.assertTrue(update_result,
-                        msg="Изменение имени и пароля пользователя с помощью ProxyAction.update_obj не выполнено")
-        # проверяем результат изменения
-        self.__checks_after_update_user(old_username="other_username",
-                                        new_username="new_username", new_password="new_password")
+        # проверяем, что пароли юнитов перешифрованы корректно и соответствуют заданным при создании юнитов
+        self.assertEqual(self._password_unit, self.unit_proxy.get_secret(filters={
+                                                  "username": new_username,
+                                                  "password": new_password,
+                                                  "name": self._name_unit,
+                                                  "login": self._login_unit
+                                              }),
+                         msg="После изменения атрибутов пользователя его пароль перешифрован некорректно")
+        self.assertEqual(self._password_unit, self.unit_proxy.get_secret(filters={
+                                                  "username": new_username,
+                                                  "password": new_password,
+                                                  "name": self._name_unit,
+                                                  "login": "other login"
+                                              }),
+                         msg="После изменения атрибутов пользователя его пароль перешифрован некорректно")
+
+    def __add_units_before_test_update_user(self):
+        """Для проверки результатов изменения атрибутов тестового пользователя добавляем
+        ему юниты, поскольку изменение этих атрибутов влияет на ключ шифра пароля юнита"""
+        self._add_test_unit()
+        self._add_test_unit(login="other login")
+
+    def test_update_username(self):
+        """Проверка изменения имени пользователя в БД через ProxyAction.update_obj"""
+        self.__add_units_before_test_update_user()
+
+        # Изменяем имя пользователя
+        self.user_proxy.update_obj(filters={"username": self._login_user},
+                                   data={
+            "username": "new_username",
+            "current_password": self._password_user  # пароль мы не
+            # меняем, но передаём текущее значение, чтобы изменить
+            # хэш пароля пользователя и перешифровать пароли юнитов
+        })
+
+        # проверяем результат изменения для экземпляра пользователя
+        self.__user_checks_after_update_user(old_username=self._login_user, old_password=self._password_user,
+                                             new_username="new_username")
+
+        # проверяем результат изменения для юнитов пользователя
+        self.__unit_checks_after_update_user(new_username="new_username")
+
+    def test_update_user_password(self):
+        """Проверка изменения пароля пользователя в БД через ProxyAction.update_obj"""
+        self.__add_units_before_test_update_user()
+
+        # Изменяем пароль пользователя
+        self.user_proxy.update_obj(filters={"username": self._login_user},
+                                   data={
+            "current_password": self._password_user,  # передаём текущее значение пароля пользователя,
+                                                      # чтобы перешифровать пароли юнитов
+            "password": "new_password"
+        })
+
+        # проверяем результат изменения для экземпляра пользователя
+        self.__user_checks_after_update_user(old_username=self._login_user,
+                                             new_password="new_password")
+
+        # проверяем результат изменения для юнитов пользователя
+        self.__unit_checks_after_update_user(new_password="new_password")
+
+    def test_update_username_and_password(self):
+        """Проверка одновременного изменения имени и пароля пользователя в БД через ProxyAction.update_obj"""
+        self.__add_units_before_test_update_user()
+
+        # Изменяем имя пользователя и пароль одновременно
+        self.user_proxy.update_obj(filters={"username": self._login_user},
+                                   data={
+            "username": "new_username",
+            "current_password": self._password_user,  # передаём текущее значение пароля пользователя,
+                                                      # чтобы перешифровать пароли юнитов
+            "password": "new_password"
+        })
+
+        # проверяем результат изменения для экземпляра пользователя
+        self.__user_checks_after_update_user(old_username="other_username",
+                                             new_username="new_username", new_password="new_password")
+
+        # проверяем результат изменения для юнитов пользователя
+        self.__unit_checks_after_update_user(new_username="new_username", new_password="new_password")
 
 
 # @unittest.skip("Temporary skip")
 class TestUnitManager(TestManager):
-    def __add_test_unit(self):
-        """Добавление тестового юнита тестовому пользователю в БД"""
-        self.unit_proxy.add_obj({
-            "username": self._login_user,
-            "password": self._password_user,
-            "name": self._name_unit,
-            "login": self._login_unit,
-            "secret": self._password_unit,
-            "user_id": self._user.id,  # объект тестового пользователя формируется в setUp-методе
-            "category_id": self.category_proxy.get_prepared_category({"user_id": self._user.id}).id
-        })
-
     def test_add_unit(self):
         """Проверка создания юнита пользователя в БД через ProxyAction.add_obj"""
         # добавление тестового юнита с предустановленными атрибутами
         # вызовом self.unit_proxy.add_obj вынесено в отдельный метод:
-        self.__add_test_unit()
+        self._add_test_unit()
 
         # проверяем количество юнитов тестового пользователя в БД
         _units = self.unit_proxy.manager.get_objects(filters={"user_id": self._user.id})
@@ -231,33 +295,17 @@ class TestUnitManager(TestManager):
     def test_add_next_units(self):
         """Проверка создания нескольких юнитов пользователей в БД через ProxyAction.add_obj"""
         # добавляем тестовому пользователю первый юнит
-        self.__add_test_unit()
+        self._add_test_unit()
 
         # проверяем, что добавление юнита с именем и логином, которые уже существуют у пользователя
         # вызывает исключение (связка имя + логин юнита + id пользователя должна быть уникальной)
         with self.assertRaisesRegex(Exception,
                                     ".*UNIQUE constraint failed: units.name, units.login, units.user_id.*",
                                     msg="Несоответствие ограничения таблицы юнитов в БД"):
-            self.unit_proxy.add_obj({
-                "username": self._login_user,
-                "password": self._password_user,
-                "name": self._name_unit,
-                "login": self._login_unit,
-                "secret": self._password_unit,
-                "user_id": self._user.id,
-                "category_id": self.category_proxy.get_prepared_category({"user_id": self._user.id}).id
-            })
+            self._add_test_unit()
 
         # добавляем тестовому пользователю другой юнит с логином, отличным от ранее добавленного
-        self.unit_proxy.add_obj({
-            "username": self._login_user,
-            "password": self._password_user,
-            "name": self._name_unit,
-            "login": "other login",
-            "secret": self._password_unit,
-            "user_id": self._user.id,
-            "category_id": self.category_proxy.get_prepared_category({"user_id": self._user.id}).id
-        })
+        self._add_test_unit(login="other login")
 
         # проверяем, что кол-во юнитов пользователя изменилось
         _units = self.unit_proxy.manager.get_objects(filters={"user_id": self._user.id})

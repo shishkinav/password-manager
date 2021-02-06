@@ -186,20 +186,46 @@ class ProxyAction:
         """Обновление объектов по проксируемому менеджеру,
         удовлетворяющих условиям в filters, замена данных указанных в data"""
         if not self.check_obj(filters=filters):
-            return False
+            raise ValueError("Объект изменения не определён")
 
         if self.__check_manager(UserManager):
-            _password = data.get('password')
-            if not _password:
-                return False  # пароль должен быть передан даже если он не меняется для корректного пересохранения хэша
+            _user = self.manager.get_obj(filters=filters)
+            _new_username = data.get('username')
+            _new_password = data.get('password')
+            if not _new_username and not _new_password:
+                raise ValueError("Нечего апдейтить")
 
-            _username = data.get('username')
-            if not _username:
-                _username = self.manager.get_obj(filters=filters).username
-            data['password'] = self.manager.generate_hash(_username + _password)
+            _current_password = data.get('current_password')
+            if not _new_password and not _current_password:
+                raise ValueError("Не передан пароль пользователя для обновления хэша")
 
-            # если есть юниты, их надо перешифровать ......
+            if not _new_password:
+                _new_password = _current_password
+            if not _new_username:
+                _new_username = _user.username
+            data['password'] = self.manager.generate_hash(_new_username + _new_password)
+            if _current_password:
+                data.pop('current_password')
 
+            # если у пользователя есть юниты, их надо перешифровать
+            unit_proxy = ProxyAction(UnitManager(prod_db=self.manager.prod_db))
+            _units = unit_proxy.manager.get_objects(filters={"user_id": _user.id})
+            if _units and not _current_password:
+                raise ValueError("Не хватает данных для расшифровки юнитов: "
+                                 "не передан текущий пароль пользователя")
+            for _unit in _units:
+                password_for_login = unit_proxy.get_secret(filters={
+                    "username": _user.username,
+                    "password": _current_password,
+                    "name": _unit.name,
+                    "login": _unit.login
+                })
+                unit_data = {"secret": self.manager.encrypt_value(
+                    username=_new_username, password=_new_password, raw=password_for_login
+                )}
+                unit_proxy.manager.update_objects(filters={"name": _unit.name, "login": _unit.login,
+                                                           "user_id": _user.id},
+                                                  data=unit_data)
         return self.manager.update_objects(filters=filters, data=data)
 
     def delete_obj(self, filters: dict) -> bool:
