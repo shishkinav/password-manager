@@ -171,8 +171,8 @@ class ProxyAction:
             _new_user.password = self.manager.generate_hash(_value)
             data = _new_user.dict()
         if self.__check_manager(UnitManager):
-            _username = data.pop('username')
-            _password = data.pop('password')
+            _username = data.pop("username")
+            _password = data.pop("password")
             _new_unit = self.manager._schema(**data)
             _new_unit.secret = self.manager.encrypt_value(
                 username=_username, password=_password, raw=_new_unit.secret
@@ -184,18 +184,21 @@ class ProxyAction:
 
     def update_obj(self, filters: dict, data: dict):
         """Обновление объектов по проксируемому менеджеру,
-        удовлетворяющих условиям в filters, замена данных указанных в data"""
+        удовлетворяющих условиям в filters, замена данных указанных в data.
+        Не забывайте при обновлении пользователя с Units передавать в data
+        текущий пароль пользователя с ключом "current_password", т.к.
+        он используется для decrypt"""
         if not self.check_obj(filters=filters):
             raise ValueError("Объект изменения не определён")
 
         if self.__check_manager(UserManager):
             _user = self.manager.get_obj(filters=filters)
-            _new_username = data.get('username')
-            _new_password = data.get('password')
+            _new_username = data.get("username")
+            _new_password = data.get("password")
             if not _new_username and not _new_password:
                 raise ValueError("Нечего апдейтить")
 
-            _current_password = data.get('current_password')
+            _current_password = data.get("current_password")
             if not _new_password and not _current_password:
                 raise ValueError("Не передан пароль пользователя для обновления хэша")
 
@@ -203,9 +206,9 @@ class ProxyAction:
                 _new_password = _current_password
             if not _new_username:
                 _new_username = _user.username
-            data['password'] = self.manager.generate_hash(_new_username + _new_password)
+            data["password"] = self.manager.generate_hash(_new_username + _new_password)
             if _current_password:
-                data.pop('current_password')
+                data.pop("current_password")
 
             # если у пользователя есть юниты, их надо перешифровать
             unit_proxy = ProxyAction(UnitManager(prod_db=self.manager.prod_db))
@@ -247,8 +250,8 @@ class ProxyAction:
         т.к. они используются для decrypt"""
         if not self.__check_manager(UnitManager):
             raise TypeError
-        _username = filters.pop('username')
-        _password = filters.pop('password')
+        _username = filters.pop("username")
+        _password = filters.pop("password")
         _obj = self.manager.get_obj(filters)
         if not _obj:
             raise IndexError
