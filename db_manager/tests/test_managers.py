@@ -263,6 +263,44 @@ class TestUserManager(TestManager):
         # проверяем результат изменения для юнитов пользователя
         self.__unit_checks_after_update_user(new_username="new_username", new_password="new_password")
 
+    def test_delete_user(self):
+        """Проверка удаления пользователя в БД через ProxyAction.delete_obj"""
+        # проверяем наличие экземпляра пользователя в БД до удаления
+        self.assertTrue(self.user_proxy.check_obj(filters={"id": self._user.id}),
+                        msg="Наличие экземпляра пользователя в БД не подтверждено")
+
+        # добавляем пользователю юнит для проверки каскадного удаления связанных объектов
+        self._add_test_unit()
+
+        # проверяем количество юнитов тестового пользователя в БД
+        _units = self.unit_proxy.manager.get_objects(filters={"user_id": self._user.id})
+        self.assertEqual(1, len(_units),
+                         msg="Количество юнитов пользователя в БД не соответствует")
+
+        # проверяем что с добавлением юнита у тестового пользователя
+        # появилась связанная категория юнита в БД
+        _categories = self.category_proxy.manager.get_objects(filters={"user_id": self._user.id})
+        self.assertEqual(1, len(_categories),
+                         msg="Количество категорий юнитов пользователя в БД не соответствует")
+
+        # удаляем пользователя
+        self.user_proxy.delete_obj(filters={"id": self._user.id})
+
+        # проверяем отсутсвие экземпляра пользователя в БД после удаления
+        self.assertFalse(self.user_proxy.check_obj(filters={"id": self._user.id}),
+                         msg="Выявлено наличие экземпляра пользователя в БД после его удаления")
+
+        # проверяем, что после удаления пользователя удалён и его юнит
+        _units = self.unit_proxy.manager.get_objects(filters={"user_id": self._user.id})
+        self.assertEqual(0, len(_units),
+                         msg="После удаления пользователя связанный с ним юнит не удалён")
+
+        # проверяем, что после удаления пользователя удалена и связанная с ним категория юнитов
+        _categories = self.category_proxy.manager.get_objects(filters={"user_id": self._user.id})
+        self.assertEqual(0, len(_categories),
+                         msg="После удаления пользователя связанная с ним"
+                             " категория юнитов не удалена")
+
 
 # @unittest.skip("Temporary skip")
 class TestUnitManager(TestManager):
