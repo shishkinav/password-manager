@@ -331,25 +331,6 @@ class TestUnitManager(TestManager):
                          ),
                          msg="Шифр пароля юнита в БД не соответствует")
 
-    def test_check_unit(self):
-        """Проверка наличия/отсутствия экземпляра юнита в БД через ProxyAction.check_obj"""
-        # добавляем тестовому пользователю тестовый юнит
-        self._add_test_unit()
-
-        # проверяем наличие экземпляра юнита в БД
-        self.assertTrue(self.unit_proxy.check_obj(filters={
-                                                  "name": self._name_unit,
-                                                  "login": self._login_unit,
-                                                  "user_id": self._user.id}),
-                        msg="Наличие экземпляра юнита в БД не подтверждено")
-
-        # проверяем, что метод check_obj подтверждает отсутствие экземпляра несуществующего юнита
-        self.assertFalse(self.unit_proxy.check_obj(filters={
-                                                  "name": self._name_unit,
-                                                  "login": "nonexistent login",
-                                                  "user_id": self._user.id}),
-                         msg="Несоответствие проверки отсутствия экземпляра юнита в БД")
-
     def test_add_next_units(self):
         """Проверка создания нескольких юнитов пользователей в БД через ProxyAction.add_obj"""
         # добавляем тестовому пользователю первый юнит
@@ -377,3 +358,85 @@ class TestUnitManager(TestManager):
                                                                "user_id": self._user.id})
         self.assertNotEqual(_unit.__dict__.get("secret"), _other_unit.__dict__.get("secret"),
                             msg="Шифры паролей разных юнитов совпали")
+
+    def test_check_unit(self):
+        """Проверка наличия/отсутствия экземпляра юнита в БД через ProxyAction.check_obj"""
+        # добавляем тестовому пользователю тестовый юнит
+        self._add_test_unit()
+
+        # проверяем наличие экземпляра юнита в БД
+        self.assertTrue(self.unit_proxy.check_obj(filters={
+                                                  "name": self._name_unit,
+                                                  "login": self._login_unit,
+                                                  "user_id": self._user.id}),
+                        msg="Наличие экземпляра юнита в БД не подтверждено")
+
+        # проверяем, что метод check_obj подтверждает отсутствие экземпляра несуществующего юнита
+        self.assertFalse(self.unit_proxy.check_obj(filters={
+                                                  "name": self._name_unit,
+                                                  "login": "nonexistent login",
+                                                  "user_id": self._user.id}),
+                         msg="Несоответствие проверки отсутствия экземпляра юнита в БД")
+
+    def test_get_secret(self):
+        """Проверка получения пароля юнита из БД через ProxyAction.get_secret"""
+        # добавляем тестовому пользователю тестовый юнит
+        self._add_test_unit()
+
+        # проверяем, что метод get_secret возвращает расшифрованный пароль
+        # юнита пользователя, указанного в фильтрах
+        self.assertEqual(self._password_unit, self.unit_proxy.get_secret(filters={
+                                                                         "username": self._login_user,
+                                                                         "password": self._password_user,
+                                                                         "name": self._name_unit,
+                                                                         "login": self._login_unit
+                                                                         }),
+                         msg="Несоответствие проверки получения пароля юнита")
+
+        # проверяем, что отсутствие в фильтре для метода get_secret
+        # значения имени пользователя вызывает исключение
+        with self.assertRaisesRegex(Exception, ".*не передано имя пользователя.*",
+                                    msg="Несоответствие проверки атрибутов "
+                                        "необходимых для расшифровки пароля юнита"):
+            self.unit_proxy.get_secret(filters={
+                "password": self._password_user,
+                "name": self._name_unit,
+                "login": self._login_unit
+            })
+
+        # проверяем, что отсутствие в фильтре для метода get_secret
+        # значения пароля пользователя вызывает исключение
+        with self.assertRaisesRegex(Exception, ".*не передан пароль пользователя.*",
+                                    msg="Несоответствие проверки атрибутов "
+                                        "необходимых для расшифровки пароля юнита"):
+            self.unit_proxy.get_secret(filters={
+                "username": self._login_user,
+                "name": self._name_unit,
+                "login": self._login_unit
+            })
+
+        # проверяем, что, если экземпляр юнита для извлечения пароля
+        # не определён, вызывается соответствующее исключение
+        with self.assertRaisesRegex(Exception, "По указанным фильтрам не определён экземпляр юнита.*",
+                                    msg="Несоответствие проверки фильтров при определении "
+                                        "экземпляра юнита для извлечения пароля"):
+            self.unit_proxy.get_secret(filters={
+                "username": self._login_user,
+                "password": self._password_user,
+                "name": self._name_unit,
+                "login": "nonexistent login"
+            })
+
+        # проверяем, что, если экземпляр юнита для извлечения пароля не определяется однозначно
+        # в соответствии с указанными фильтрами, вызывается соответствующее исключение;
+        # для этого добавляем пользователю ещё один юнит, отличающийся только логином
+        # от ранее добавленного, но в фильтрах логин не указываем
+        self._add_test_unit(login="other login")
+        with self.assertRaisesRegex(Exception, ".*более одного экземпляра по указанным фильтрам",
+                                    msg="Несоответствие проверки фильтров на однозначность "
+                                        "определения экземпляра юнита для извлечения пароля"):
+            self.unit_proxy.get_secret(filters={
+                "username": self._login_user,
+                "password": self._password_user,
+                "name": self._name_unit
+            })
