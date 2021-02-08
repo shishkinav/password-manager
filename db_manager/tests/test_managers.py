@@ -263,6 +263,7 @@ class TestUserManager(TestManager):
         # проверяем результат изменения для юнитов пользователя
         self.__unit_checks_after_update_user(new_username="new_username", new_password="new_password")
 
+    @unittest.skip("Temporary skip")
     def test_delete_user(self):
         """Проверка удаления пользователя в БД через ProxyAction.delete_obj"""
         # проверяем наличие экземпляра пользователя в БД до удаления
@@ -329,6 +330,25 @@ class TestUnitManager(TestManager):
                              enc=_unit.__dict__.get("secret")
                          ),
                          msg="Шифр пароля юнита в БД не соответствует")
+
+    def test_check_unit(self):
+        """Проверка наличия/отсутствия экземпляра юнита в БД через ProxyAction.check_obj"""
+        # добавляем тестовому пользователю тестовый юнит
+        self._add_test_unit()
+
+        # проверяем наличие экземпляра юнита в БД
+        self.assertTrue(self.unit_proxy.check_obj(filters={
+                                                  "name": self._name_unit,
+                                                  "login": self._login_unit,
+                                                  "user_id": self._user.id}),
+                        msg="Наличие экземпляра юнита в БД не подтверждено")
+
+        # проверяем, что метод check_obj подтверждает отсутствие экземпляра несуществующего юнита
+        self.assertFalse(self.unit_proxy.check_obj(filters={
+                                                  "name": self._name_unit,
+                                                  "login": "nonexistent login",
+                                                  "user_id": self._user.id}),
+                         msg="Несоответствие проверки отсутствия экземпляра юнита в БД")
 
     def test_add_next_units(self):
         """Проверка создания нескольких юнитов пользователей в БД через ProxyAction.add_obj"""
