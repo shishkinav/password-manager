@@ -44,7 +44,8 @@ class Category(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String)
 
-    user_id = Column(Integer, ForeignKey('users.id', ondelete="CASCADE"))
+    user_id = Column(Integer, ForeignKey('users.id', ondelete="CASCADE"),
+        nullable=False)
     UniqueConstraint(name, user_id, name='unc_name')
 
     user = relationship("User", back_populates="categories")

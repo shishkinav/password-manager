@@ -53,7 +53,6 @@ class TestManager(unittest.TestCase):
         })
 
 
-# @unittest.skip("Temporary skip")
 class TestUserManager(TestManager):
     def test_add_user(self):
         """Проверка создания пользователя в БД через ProxyAction.add_obj"""
@@ -263,7 +262,6 @@ class TestUserManager(TestManager):
         # проверяем результат изменения для юнитов пользователя
         self.__unit_checks_after_update_user(new_username="new_username", new_password="new_password")
 
-    @unittest.skip("Temporary skip")
     def test_delete_user(self):
         """Проверка удаления пользователя в БД через ProxyAction.delete_obj"""
         # проверяем наличие экземпляра пользователя в БД до удаления
@@ -303,7 +301,6 @@ class TestUserManager(TestManager):
                              " категория юнитов не удалена")
 
 
-# @unittest.skip("Temporary skip")
 class TestUnitManager(TestManager):
     def test_add_unit(self):
         """Проверка создания юнита пользователя в БД через ProxyAction.add_obj"""
@@ -395,7 +392,7 @@ class TestUnitManager(TestManager):
 
         # проверяем, что отсутствие в фильтре для метода get_secret
         # значения имени пользователя вызывает исключение
-        with self.assertRaisesRegex(Exception, ".*не передано имя пользователя.*",
+        with self.assertRaisesRegex(Exception, "Не все обязательные атрибуты метода переданы",
                                     msg="Несоответствие проверки атрибутов "
                                         "необходимых для расшифровки пароля юнита"):
             self.unit_proxy.get_secret(filters={
@@ -406,7 +403,7 @@ class TestUnitManager(TestManager):
 
         # проверяем, что отсутствие в фильтре для метода get_secret
         # значения пароля пользователя вызывает исключение
-        with self.assertRaisesRegex(Exception, ".*не передан пароль пользователя.*",
+        with self.assertRaisesRegex(Exception, "Не все обязательные атрибуты метода переданы",
                                     msg="Несоответствие проверки атрибутов "
                                         "необходимых для расшифровки пароля юнита"):
             self.unit_proxy.get_secret(filters={
