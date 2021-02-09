@@ -12,7 +12,7 @@ class DBManager:
     """Менеджер управления БД"""
     _model: models.Base = None
     _schema: schemas.BaseModel = None
-    
+
     def __init__(self, model: models.Base, schema: schemas.BaseModel, prod_db=True):
         self._model = model
         self._schema = schema
@@ -27,7 +27,7 @@ class DBManager:
     @property
     def session(self):
         return self.session_local()
-        
+
     def destroy_db(self):
         """Закрытие сессии и удаление БД"""
         self.session.close()
@@ -39,6 +39,9 @@ class DBManager:
 
     def get_obj(self, filters: dict) -> Any:
         """Получить объект модели с учетом указанных фильтров"""
+        if len(self.get_objects(filters)) > 1:
+            raise ValueError("При получении объекта выявлено более одного "
+                             "экземпляра по указанным фильтрам")
         return self.session.query(self._model).filter_by(**filters).first()
 
     def create_obj(self, data: dict) -> bool:
@@ -135,6 +138,7 @@ class ProxyAction:
     """Класс основных действий через проксирование объектных менеджеров.
     Все методы класса Прокси будут работать с БД относительно предустановленных
     моделей и схем в соответствующих проксируемых менеджерах"""
+
     def __init__(self, manager: DBManager):
         """В качестве менеджера передаётся один из объектных менеджеров базы"""
         self._manager = manager
@@ -161,7 +165,7 @@ class ProxyAction:
         if isinstance(_obj, models.Base):
             return True
         return False
-        
+
     def add_obj(self, data: dict) -> bool:
         """Создание новых объектов в БД через проксируемого менеджера.
         Не забывайте передавать для Units в data значения username и password,
@@ -198,11 +202,11 @@ class ProxyAction:
             _new_username = data.get("username")
             _new_password = data.get("password")
             if not _new_username and not _new_password:
-                raise ValueError("Нечего апдейтить")
+                raise KeyError("Нечего апдейтить")
 
             _current_password = data.get("current_password")
             if not _new_password and not _current_password:
-                raise ValueError("Не передан пароль пользователя для обновления хэша")
+                raise KeyError("Не передан пароль пользователя для обновления хэша")
 
             if not _new_password:
                 _new_password = _current_password
@@ -216,8 +220,8 @@ class ProxyAction:
             unit_proxy = ProxyAction(UnitManager(prod_db=self.manager.prod_db))
             _units = unit_proxy.manager.get_objects(filters={"user_id": _user.id})
             if _units and not _current_password:
-                raise ValueError("Не хватает данных для расшифровки юнитов: "
-                                 "не передан текущий пароль пользователя")
+                raise KeyError("Не хватает данных для расшифровки юнитов: "
+                               "не передан текущий пароль пользователя")
             for _unit in _units:
                 password_for_login = unit_proxy.get_secret(filters={
                     "username": _user.username,
@@ -245,21 +249,30 @@ class ProxyAction:
             _obj = self.manager.get_obj(filters={"username": username, "password": pass_hash})
             return True if _obj else False
         raise TypeError
-        
+
     def get_secret(self, filters: dict) -> str:
-        """Получить пароль из Unit'a.
+        """Получить пароль юнита.
         Не забывайте передавать в filters значения username и password,
         т.к. они используются для decrypt"""
         if not self.__check_manager(UnitManager):
             raise TypeError
+        if "username" not in filters:
+            raise KeyError("Не хватает данных для расшифровки пароля юнита: "
+                           "не передано имя пользователя")
         _username = filters.pop("username")
+        if "password" not in filters:
+            raise KeyError("Не хватает данных для расшифровки пароля юнита: "
+                           "не передан пароль пользователя")
         _password = filters.pop("password")
-        _obj = self.manager.get_obj(filters)
-        if not _obj:
-            raise IndexError
-        return self.manager.decrypt_value(
-            username=_username, password=_password, enc=_obj.secret
-        )
+
+        if self.check_obj(filters):
+            _obj = self.manager.get_obj(filters)
+            return self.manager.decrypt_value(
+                username=_username, password=_password, enc=_obj.secret
+            )
+        else:
+            raise IndexError("По указанным фильтрам не определён экземпляр юнита "
+                             "для извлечения пароля")
 
     def get_prepared_category(self, filters: dict):
         """Получить объект модели категории с учетом указанных фильтров.
