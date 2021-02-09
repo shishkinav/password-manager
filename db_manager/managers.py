@@ -73,7 +73,9 @@ class DBManager:
         """Удалить объекты из базы, которые подпадают под условия фильтрации"""
         db = self.session
         try:
-            db.query(self._model).filter_by(**filters).delete(synchronize_session='evaluate')
+            _objects = db.query(self._model).filter_by(**filters).all()
+            for _ in _objects:
+                db.delete(_)
             db.commit()
         except:
             return False
