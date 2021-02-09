@@ -1,25 +1,22 @@
-from typing import List, Optional, ClassVar
+from typing import List
 from pydantic import BaseModel
 
 
 class UserBase(BaseModel):
-    #id: int
     username: str
     password: str
 
 
 class CategoryBase(BaseModel):
-    # id: int
     name: str
     user_id: int
 
 
 class Unit(BaseModel):
-    #id: int
     name: str
     login: str
     secret: str
-    url: str
+    url: str = ''
     user_id: int
     category_id: int
 

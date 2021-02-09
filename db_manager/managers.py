@@ -1,6 +1,5 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.orm import Session
 from settings import FILE_DB, FILE_TEST_DB
 from db_manager import models, schemas
 from pydantic import ValidationError
@@ -13,11 +12,12 @@ class DBManager:
     """Менеджер управления БД"""
     _model: models.Base = None
     _schema: schemas.BaseModel = None
-    
+
     def __init__(self, model: models.Base, schema: schemas.BaseModel, prod_db=True):
         self._model = model
         self._schema = schema
-        self.file_db: Path = FILE_DB if prod_db else FILE_TEST_DB
+        self.prod_db = prod_db
+        self.file_db: Path = FILE_DB if self.prod_db else FILE_TEST_DB
         self.file_db.touch()
         self.bd_url = f'sqlite:///{self.file_db}'
         engine = create_engine(self.bd_url, connect_args={"check_same_thread": False})
@@ -27,7 +27,7 @@ class DBManager:
     @property
     def session(self):
         return self.session_local()
-        
+
     def destroy_db(self):
         """Закрытие сессии и удаление БД"""
         self.session.close()
@@ -39,7 +39,10 @@ class DBManager:
 
     def get_obj(self, filters: dict) -> Any:
         """Получить объект модели с учетом указанных фильтров"""
-        return self.session.query(self._model).filter_by(**filters).first() 
+        if len(self.get_objects(filters)) > 1:
+            raise ValueError("При получении объекта выявлено более одного "
+                             "экземпляра по указанным фильтрам")
+        return self.session.query(self._model).filter_by(**filters).first()
 
     def create_obj(self, data: dict) -> bool:
         """Универсальный метод создания объекта в БД с 
@@ -133,6 +136,7 @@ class ProxyAction:
     """Класс основных действий через проксирование объектных менеджеров.
     Все методы класса Прокси будут работать с БД относительно предустановленных
     моделей и схем в соответствующих проксируемых менеджерах"""
+
     def __init__(self, manager: DBManager):
         """В качестве менеджера передаётся один из объектных менеджеров базы"""
         self._manager = manager
@@ -159,7 +163,7 @@ class ProxyAction:
         if isinstance(_obj, models.Base):
             return True
         return False
-        
+
     def add_obj(self, data: dict) -> bool:
         """Создание новых объектов в БД через проксируемого менеджера.
         Не забывайте передавать для Units в data значения username и password,
@@ -171,18 +175,64 @@ class ProxyAction:
             _new_user.password = self.manager.generate_hash(_value)
             data = _new_user.dict()
         if self.__check_manager(UnitManager):
-            _username = data.pop('username')
-            _password = data.pop('password')
+            _username = data.pop("username")
+            _password = data.pop("password")
             _new_unit = self.manager._schema(**data)
             _new_unit.secret = self.manager.encrypt_value(
                 username=_username, password=_password, raw=_new_unit.secret
             )
             data = _new_unit.dict()
-        return self.manager.create_obj(data=data)        
+        if self.__check_manager(CategoryManager):
+            self.manager._schema(**data)
+        return self.manager.create_obj(data=data)
 
     def update_obj(self, filters: dict, data: dict):
         """Обновление объектов по проксируемому менеджеру,
-        удовлетворяющих условиям в filters, замена данных указанных в data"""
+        удовлетворяющих условиям в filters, замена данных указанных в data.
+        Не забывайте при обновлении пользователя с Units передавать в data
+        текущий пароль пользователя с ключом "current_password", т.к.
+        он используется для decrypt"""
+        if not self.check_obj(filters=filters):
+            raise ValueError("Объект изменения не определён")
+
+        if self.__check_manager(UserManager):
+            _user = self.manager.get_obj(filters=filters)
+            _new_username = data.get("username")
+            _new_password = data.get("password")
+            if not _new_username and not _new_password:
+                raise KeyError("Нечего апдейтить")
+
+            _current_password = data.get("current_password")
+            if not _new_password and not _current_password:
+                raise KeyError("Не передан пароль пользователя для обновления хэша")
+
+            if not _new_password:
+                _new_password = _current_password
+            if not _new_username:
+                _new_username = _user.username
+            data["password"] = self.manager.generate_hash(_new_username + _new_password)
+            if _current_password:
+                data.pop("current_password")
+
+            # если у пользователя есть юниты, их надо перешифровать
+            unit_proxy = ProxyAction(UnitManager(prod_db=self.manager.prod_db))
+            _units = unit_proxy.manager.get_objects(filters={"user_id": _user.id})
+            if _units and not _current_password:
+                raise KeyError("Не хватает данных для расшифровки юнитов: "
+                               "не передан текущий пароль пользователя")
+            for _unit in _units:
+                password_for_login = unit_proxy.get_secret(filters={
+                    "username": _user.username,
+                    "password": _current_password,
+                    "name": _unit.name,
+                    "login": _unit.login
+                })
+                unit_data = {"secret": self.manager.encrypt_value(
+                    username=_new_username, password=_new_password, raw=password_for_login
+                )}
+                unit_proxy.manager.update_objects(filters={"name": _unit.name, "login": _unit.login,
+                                                           "user_id": _user.id},
+                                                  data=unit_data)
         return self.manager.update_objects(filters=filters, data=data)
 
     def delete_obj(self, filters: dict) -> bool:
@@ -197,18 +247,42 @@ class ProxyAction:
             _obj = self.manager.get_obj(filters={"username": username, "password": pass_hash})
             return True if _obj else False
         raise TypeError
-        
+
     def get_secret(self, filters: dict) -> str:
-        """Получить пароль из Unit'a.
+        """Получить пароль юнита.
         Не забывайте передавать в filters значения username и password,
         т.к. они используются для decrypt"""
         if not self.__check_manager(UnitManager):
             raise TypeError
-        _username = filters.pop('username')
-        _password = filters.pop('password')
-        _obj = self.manager.get_obj(**filters)
-        if not _obj:
-            raise IndexError
-        return self.manager.decrypt_value(
-            username=_username, password=_password, enc=_obj.secret
-        )
+        if "username" not in filters:
+            raise KeyError("Не хватает данных для расшифровки пароля юнита: "
+                           "не передано имя пользователя")
+        _username = filters.pop("username")
+        if "password" not in filters:
+            raise KeyError("Не хватает данных для расшифровки пароля юнита: "
+                           "не передан пароль пользователя")
+        _password = filters.pop("password")
+
+        if self.check_obj(filters):
+            _obj = self.manager.get_obj(filters)
+            return self.manager.decrypt_value(
+                username=_username, password=_password, enc=_obj.secret
+            )
+        else:
+            raise IndexError("По указанным фильтрам не определён экземпляр юнита "
+                             "для извлечения пароля")
+
+    def get_prepared_category(self, filters: dict):
+        """Получить объект модели категории с учетом указанных фильтров.
+        Если в фильтрах не указано название категории,
+        добавляем фильтр для "name" со значением по-умолчанию: "default".
+        Если объект не найден, пробуем добавить его с атрибутами на основе фильтров"""
+        if not self.__check_manager(CategoryManager):
+            raise TypeError
+        if not filters.get("name"):
+            filters["name"] = "default"  # значение по-умолчанию
+        if not self.check_obj(filters=filters):
+            self.add_obj(data=filters)
+            if not self.check_obj(filters=filters):
+                raise IndexError
+        return self.manager.get_obj(filters=filters)
