@@ -76,7 +76,9 @@ class DBManager:
         """Удалить объекты из базы, которые подпадают под условия фильтрации"""
         db = self.session
         try:
-            db.query(self._model).filter_by(**filters).delete(synchronize_session='evaluate')
+            _objects = db.query(self._model).filter_by(**filters).all()
+            for _ in _objects:
+                db.delete(_)
             db.commit()
         except:
             return False
@@ -254,22 +256,17 @@ class ProxyAction:
         т.к. они используются для decrypt"""
         if not self.__check_manager(UnitManager):
             raise TypeError
-        if "username" not in filters:
-            raise KeyError("Не хватает данных для расшифровки пароля юнита: "
-                           "не передано имя пользователя")
+        if "username" not in filters or "password" not in filters:
+            raise KeyError("Не все обязательные атрибуты метода переданы")
         _username = filters.pop("username")
-        if "password" not in filters:
-            raise KeyError("Не хватает данных для расшифровки пароля юнита: "
-                           "не передан пароль пользователя")
         _password = filters.pop("password")
 
-        if self.check_obj(filters):
-            _obj = self.manager.get_obj(filters)
+        _obj = self.manager.get_obj(filters)
+        if _obj:
             return self.manager.decrypt_value(
                 username=_username, password=_password, enc=_obj.secret
             )
-        else:
-            raise IndexError("По указанным фильтрам не определён экземпляр юнита "
+        raise IndexError("По указанным фильтрам не определён экземпляр юнита "
                              "для извлечения пароля")
 
     def get_prepared_category(self, filters: dict):
