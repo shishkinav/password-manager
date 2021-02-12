@@ -85,34 +85,34 @@ password_argument = click.option('--password', '-p', help="Provide your password
 @click.pass_context
 def cli(ctx, c, u, db):
     """
-    pwdone is a multi-user, multi-platform command-line utility
+    saverpwd is a multi-user, multi-platform command-line utility
     for storing and organizing passwords and another info for logins
 
     Samples:
 
     \b
     adding a new user:
-    $ pwdone uadd
+    $ saverpwd uadd
     or using options:
-    $ pwdone uadd -u user-name
+    $ saverpwd uadd -u user-name
 
     \b
     adding a new record in passwords DB:
-    $ pwdone add
+    $ saverpwd add
     or using options:
-    $ pwdone add -u user-name -l login-for-site -n record-name
+    $ saverpwd add -u user-name -l login-for-site -n record-name
 
     \b
     show all user records:
-    $ pwdone show
+    $ saverpwd show
 
     \b
     get the password of record to the clipboard:
-    $ pwdone get
+    $ saverpwd get
 
     \b
     full list of command options:
-    $ pwdone [command] --help
+    $ saverpwd [command] --help
     """
     ctx.obj = {
         'FLAGS': {

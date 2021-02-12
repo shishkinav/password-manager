@@ -7,7 +7,7 @@
 from setuptools import setup
 
 setup(
-    name='pwdone',
+    name='saverpwd',
     version='1.1',
     py_modules=['cli'],
     install_requires=[
@@ -15,6 +15,6 @@ setup(
     ],
     entry_points='''
         [console_scripts]
-        pwdone=cli:cli
+        saverpwd=cli:cli
     ''',
 )

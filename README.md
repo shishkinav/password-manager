@@ -1,8 +1,8 @@
-# pwdone
+# saverpwd
 
 ### Password manager with a command-line interface
 
-pwdone is a multi-user, multi-platform command-line utility for storing and organizing passwords and another info for
+saverpwd is a multi-user, multi-platform command-line utility for storing and organizing passwords and another info for
 logins
 
 ### Contents
@@ -20,55 +20,55 @@ logins
 
    help on using the utility:
    ```
-   $ pwdone --help
+   $ saverpwd --help
    ```
    <br>   
 
    more detailed help on using utility commands:
    ```
-   $ pwdone [command] --help
+   $ saverpwd [command] --help
    ```
    <br>   
 
    adding a new user:
    ```
-   $ pwdone uadd
+   $ saverpwd uadd
    ```
    or using options:
    ```
-   $ pwdone uadd -u user-name
+   $ saverpwd uadd -u user-name
    ``` 
    <br>      
 
    adding a new record in passwords DB:
    ```
-   $ pwdone add
+   $ saverpwd add
    ```
    or using options:
    ```
-   $ pwdone add -u user-name -l login-for-site -n record-name
+   $ saverpwd add -u user-name -l login-for-site -n record-name
    ```
    <br>   
 
    show all user records:
    ```
-   $ pwdone show
+   $ saverpwd show
    ```
    <br>   
 
    get the password of record to the clipboard:
    ```
-   $ pwdone get
+   $ saverpwd get
    ```
    or using options:
    ```
-   $ pwdone get -n record-name
+   $ saverpwd get -n record-name
    ```
    <br>   
 
    full list of command options:
    ```
-   $ pwdone [command] --help
+   $ saverpwd [command] --help
    ```
    <br>  
 
@@ -118,9 +118,9 @@ logins
            <br>
     <br>      
 
-    install pwdone:
+    install saverpwd:
     ```
-    $ cd pwdone-folder
+    $ cd saverpwd-folder
     $ pipenv install -e .
     $ pipenv shell
     ```
@@ -146,9 +146,9 @@ logins
    pip3 install pipenv
    ```    
 
-   install pwdone:
+   install saverpwd:
    ```
-   $ cd pwdone-folder
+   $ cd saverpwd-folder
    $ pipenv install -e .
    $ pipenv shell
    ```   
@@ -161,8 +161,8 @@ logins
    run the .msi installer in the 'dist' folder by double click
    <br>
    <br>
-   To uninstall pwdone, look in Apps & features Windows 
-   for an application like 'Python pwdone-1.0'
+   To uninstall saverpwd, look in Apps & features Windows 
+   for an application like 'Python saverpwd-1.0'
    
 
 3. Backup and restore data
