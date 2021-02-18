@@ -516,7 +516,7 @@ class TestUnitManager(TestManager):
 
         # изменяем другие неключевые атрибуты тестового юнита
         _new_category = self.category_proxy.get_prepared_category(
-            {"user_id": _control_user.id, "name": "new category"}
+            {"user_id": self._user.id, "name": "new category"}
         )
         self.unit_proxy.update_obj(filters={"name": "new name", "login": "new login",
                                             "user_id": self._user.id},
@@ -528,7 +528,9 @@ class TestUnitManager(TestManager):
                                                          "user_id": self._user.id})
         self.assertEqual("new url", _unit.url,
                          msg="url юнита в БД не соответствует")
-        self.assertEqual("new category", _new_category.name,
+        self.assertEqual("new category", self.category_proxy.manager.get_obj(
+                                             filters={"id": _unit.category_id}
+                                         ).name,
                          msg="Категория юнита в БД не соответствует")
 
         # проверка контрольных юнитов после всех изменений:
