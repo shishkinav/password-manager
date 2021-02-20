@@ -457,6 +457,44 @@ class TestUnitManager(TestManager):
         })
         return _control_user
 
+    def __checks_for_control_units(self, control_user_id):
+        """Проверка атрибутов контрольных юнитов
+        у тестового и контрольного пользователей"""
+        # проверяем, что атрибуты контрольного юнита тестового пользователя не затронуты
+        _default_category = self.category_proxy.get_prepared_category({"user_id": self._user.id})
+        self.assertTrue(self.unit_proxy.check_obj(filters={
+                                                  "name": self._name_unit,
+                                                  "login": "control login",
+                                                  "user_id": self._user.id,
+                                                  "category_id": _default_category.id}),
+                        msg="Наличие экземпляра контрольного юнита в БД не подтверждено")
+        self.assertEqual(self._password_unit, self.unit_proxy.get_secret(filters={
+                                                  "name": self._name_unit,
+                                                  "login": "control login",
+                                                  "username": self._login_user,
+                                                  "password": self._password_user}),
+                         msg="Пароль контрольного юнита в БД не соответствует")
+
+        # проверяем, что кол-во юнитов контрольного пользователя не изменилось
+        _control_user_units = self.unit_proxy.manager.get_objects(filters={"user_id": control_user_id})
+        self.assertEqual(1, len(_control_user_units),
+                         msg="Количество юнитов контрольного пользователя в БД не соответствует")
+
+        # проверяем, что атрибуты юнита контрольного пользователя не затронуты
+        _default_category = self.category_proxy.get_prepared_category({"user_id": control_user_id})
+        self.assertTrue(self.unit_proxy.check_obj(filters={
+                                                  "name": self._name_unit,
+                                                  "login": self._login_unit,
+                                                  "user_id": control_user_id,
+                                                  "category_id": _default_category.id}),
+                        msg="Наличие экземпляра юнита контрольного пользователя в БД не подтверждено")
+        self.assertEqual(self._password_unit, self.unit_proxy.get_secret(filters={
+                                                  "name": self._name_unit,
+                                                  "login": self._login_unit,
+                                                  "username": "control user",
+                                                  "password": self._password_user}),
+                         msg="Пароль юнита контрольного пользователя в БД не соответствует")
+
     def test_update_unit(self):
         """Проверка изменения атрибутов юнита пользователя в БД через ProxyAction.update_obj"""
         # добавляем тестовому пользователю тестовый юнит
@@ -466,7 +504,7 @@ class TestUnitManager(TestManager):
         _control_user = self.__get_control_user_with_unit()
 
         # добавляем тестовому пользователю ещё один юнит для контроля
-        self._add_test_unit(login="other login")
+        self._add_test_unit(login="control login")
 
         # проверяем, что попытка изменить принадлежность
         # тестового юнита пользователю вызывает исключение
@@ -533,43 +571,47 @@ class TestUnitManager(TestManager):
                                          ).name,
                          msg="Категория юнита в БД не соответствует")
 
-        # проверка контрольных юнитов после всех изменений:
-        # проверяем, что количество юнитов у тестового пользователя не изменилось
+        # проверяем, что после всех изменений количество
+        # юнитов у тестового пользователя не изменилось
         _units = self.unit_proxy.manager.get_objects(filters={"user_id": self._user.id})
         self.assertEqual(2, len(_units),
                          msg="Количество юнитов пользователя в БД не соответствует")
 
-        # проверяем, что атрибуты контрольного юнита пользователя не затронуты
-        _default_category = self.category_proxy.get_prepared_category({"user_id": self._user.id})
-        self.assertTrue(self.unit_proxy.check_obj(filters={
-                                                  "name": self._name_unit,
-                                                  "login": "other login",
-                                                  "user_id": self._user.id,
-                                                  "category_id": _default_category.id}),
-                        msg="Наличие экземпляра контрольного юнита в БД не подтверждено")
-        self.assertEqual(self._password_unit, self.unit_proxy.get_secret(filters={
-                                                  "name": self._name_unit,
-                                                  "login": "other login",
-                                                  "username": self._login_user,
-                                                  "password": self._password_user}),
-                         msg="Пароль контрольного юнита в БД не соответствует")
+        # проверяем, что контрольные юниты не затронуты
+        # изменениями тестового юнита
+        self.__checks_for_control_units(_control_user.id)
 
-        # проверяем, что юнит контрольного пользователя не затронут
-        _control_user_units = self.unit_proxy.manager.get_objects(filters={"user_id": _control_user.id})
-        self.assertEqual(1, len(_control_user_units),
-                         msg="Количество юнитов контрольного пользователя в БД не соответствует")
+    def test_delete_unit(self):
+        """Проверка удаления юнита пользователя в БД через ProxyAction.delete_obj"""
+        # добавляем тестовому пользователю тестовый юнит
+        self._add_test_unit()
 
-        # проверяем, что атрибуты юнита контрольного пользователя не затронуты
-        _default_category = self.category_proxy.get_prepared_category({"user_id": _control_user.id})
-        self.assertTrue(self.unit_proxy.check_obj(filters={
-                                                  "name": self._name_unit,
-                                                  "login": self._login_unit,
-                                                  "user_id": _control_user.id,
-                                                  "category_id": _default_category.id}),
-                        msg="Наличие экземпляра юнита контрольного пользователя в БД не подтверждено")
-        self.assertEqual(self._password_unit, self.unit_proxy.get_secret(filters={
-                                                  "name": self._name_unit,
-                                                  "login": self._login_unit,
-                                                  "username": "control user",
-                                                  "password": self._password_user}),
-                         msg="Пароль юнита контрольного пользователя в БД не соответствует")
+        # добавляем контрольного пользователя с аналогичным юнитом
+        _control_user = self.__get_control_user_with_unit()
+
+        # добавляем тестовому пользователю ещё один юнит для контроля
+        self._add_test_unit(login="control login")
+
+        # проверяем, что у тестового пользователя теперь 2 юнита
+        _units = self.unit_proxy.manager.get_objects(filters={"user_id": self._user.id})
+        self.assertEqual(2, len(_units),
+                         msg="Количество юнитов пользователя в БД не соответствует")
+
+        # удаляем тестовый юнит
+        self.unit_proxy.delete_obj(filters={"name": self._name_unit, "login": self._login_unit,
+                                            "user_id": self._user.id})
+
+        # проверяем, что количество юнитов у тестового пользователя уменьшилось на 1
+        _units = self.unit_proxy.manager.get_objects(filters={"user_id": self._user.id})
+        self.assertEqual(1, len(_units),
+                         msg="Количество юнитов пользователя в БД не соответствует")
+
+        # проверяем, что удалённый юнит не определяется в БД
+        self.assertFalse(self.unit_proxy.check_obj(
+            filters={"name": self._name_unit, "login": self._login_unit,
+                     "user_id": self._user.id})
+        )
+
+        # проверяем, что контрольные юниты не затронуты
+        # удалением тестового юнита
+        self.__checks_for_control_units(_control_user.id)
