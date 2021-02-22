@@ -53,6 +53,23 @@ class TestManager(unittest.TestCase):
         })
 
 
+class TestDBManager(TestManager):
+    def test_get_obj(self):
+        """Проверка получения объекта модели"""
+        # проверяем, что, если объект модели не определяется однозначно в соответствии
+        # с указанными фильтрами, вызывается соответствующее исключение;
+        # для этого добавляем тестовому пользователю два юнита, отличающийся только
+        # логином, но при получении объекта в фильтрах логин не указываем
+        self._add_test_unit()
+        self._add_test_unit(login="other login")
+        with self.assertRaisesRegex(Exception, ".*более одного экземпляра по указанным фильтрам",
+                                    msg="Несоответствие проверки однозначности "
+                                        "определения объекта модели"):
+            self.unit_proxy.manager.get_obj(filters={
+                "user_id": self._user.id,
+            })
+
+
 class TestUserManager(TestManager):
     def test_add_user(self):
         """Проверка создания пользователя в БД через ProxyAction.add_obj"""
@@ -422,20 +439,6 @@ class TestUnitManager(TestManager):
                 "password": self._password_user,
                 "name": self._name_unit,
                 "login": "nonexistent login"
-            })
-
-        # проверяем, что, если экземпляр юнита для извлечения пароля не определяется однозначно
-        # в соответствии с указанными фильтрами, вызывается соответствующее исключение;
-        # для этого добавляем пользователю ещё один юнит, отличающийся только логином
-        # от ранее добавленного, но в фильтрах логин не указываем
-        self._add_test_unit(login="other login")
-        with self.assertRaisesRegex(Exception, ".*более одного экземпляра по указанным фильтрам",
-                                    msg="Несоответствие проверки фильтров на однозначность "
-                                        "определения экземпляра юнита для извлечения пароля"):
-            self.unit_proxy.get_secret(filters={
-                "username": self._login_user,
-                "password": self._password_user,
-                "name": self._name_unit
             })
 
     def __get_control_user_with_unit(self):
