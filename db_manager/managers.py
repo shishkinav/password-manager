@@ -191,9 +191,9 @@ class ProxyAction:
     def update_obj(self, filters: dict, data: dict):
         """Обновление объектов по проксируемому менеджеру,
         удовлетворяющих условиям в filters, замена данных указанных в data.
-        Не забывайте при обновлении пользователя с Units передавать в data
-        текущий пароль пользователя с ключом "current_password", т.к.
-        он используется для decrypt"""
+        Не забывайте при обновлении пароля юнита (или пользователя с юнитами)
+        передавать в data текущий пароль пользователя с ключом "current_password",
+        т.к. он используется для encrypt (decrypt)"""
         if not self.check_obj(filters=filters):
             raise ValueError("Объект изменения не определён")
 
@@ -235,6 +235,28 @@ class ProxyAction:
                 unit_proxy.manager.update_objects(filters={"name": _unit.name, "login": _unit.login,
                                                            "user_id": _user.id},
                                                   data=unit_data)
+        if self.__check_manager(UnitManager):
+            _user_id = filters.get("user_id")
+            if not _user_id:
+                raise KeyError("В условиях filters не передан id пользователя")
+            if data.get("user_id"):
+                raise ValueError("В рамках изменения юнита корректировка "
+                                 "принадлежности пользователю не производится")
+            _current_password = data.pop("current_password", None)
+            coming_filters = filters.copy()
+            coming_filters.update(data)
+            if self.check_obj(filters=coming_filters):
+                raise ValueError("По заданным атрибутам для изменения юнит уже существует")
+            _secret = data.pop("secret", None)
+            if _secret:
+
+                if not _current_password:
+                    raise KeyError("Не передан пароль пользователя для шифрования юнита")
+                user_proxy = ProxyAction(UserManager(prod_db=self.manager.prod_db))
+                _user = user_proxy.manager.get_obj(filters={"id": _user_id})
+                data["secret"] = self.manager.encrypt_value(
+                    username=_user.username, password=_current_password, raw=_secret
+                )
         return self.manager.update_objects(filters=filters, data=data)
 
     def delete_obj(self, filters: dict) -> bool:
