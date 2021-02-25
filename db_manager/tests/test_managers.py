@@ -1,5 +1,7 @@
 import unittest
 from db_manager import managers as db_sql
+from pathlib import Path
+from settings import FILE_TEST_DB
 
 
 class TestManager(unittest.TestCase):
@@ -27,18 +29,6 @@ class TestManager(unittest.TestCase):
 
         # получаем объект тестового пользователя к которому можем обращаться в последующих тестах
         self._user = self.user_proxy.manager.get_obj(filters={"username": self._login_user})
-
-    @classmethod
-    def tearDownClass(cls):
-        """Удаление тестовой БД по завершении тестов"""
-        # cls.user_proxy.manager.session.close_all()
-        # cls.user_proxy.manager.destroy_db()
-
-        # очищаем таблицы БД - временное решение по причине
-        # SADeprecationWarning: The Session.close_all() method is deprecated and will be removed in a future release.
-        cls.unit_proxy.delete_obj(filters={})
-        cls.category_proxy.delete_obj(filters={})
-        cls.user_proxy.delete_obj(filters={})
 
     def _add_test_unit(self, login=_login_unit):
         """Добавление тестового юнита тестовому пользователю в БД"""
@@ -618,3 +608,18 @@ class TestUnitManager(TestManager):
         # проверяем, что контрольные юниты не затронуты
         # удалением тестового юнита
         self.__checks_for_control_units(_control_user.id)
+
+
+# чтобы увидеть содержимое тестовой БД по завершении тестов
+# нужно раскомментировать строку ниже
+# @unittest.skip("Temporary skip")
+class TestZapDB(TestManager):
+    def test_destroy_db(self):
+        """Проверка удаления тестовой БД"""
+        _err_msg = ""
+        try:
+            self.user_proxy.manager.destroy_db()
+        except Exception as exc:
+            _err_msg = "".join([exc.__class__.__name__, ": ", exc.__str__()])
+        self.assertFalse(Path(FILE_TEST_DB).is_file(),
+                         msg=f"Сбой удаления тестовой БД. {_err_msg}")
