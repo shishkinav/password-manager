@@ -1,5 +1,6 @@
 import unittest
 from db_manager import managers as db_sql
+from db_manager.models import User as User_model
 from pathlib import Path
 from settings import FILE_TEST_DB
 
@@ -46,6 +47,19 @@ class TestManager(unittest.TestCase):
 class TestDBManager(TestManager):
     def test_get_obj(self):
         """Проверка получения объекта модели"""
+        # тестовый пользователь добавлен в БД в TestManager.setUp-методе;
+        # объект этого пользователя уже получен там же с помощью метода get_obj
+        # и сохранён в переменную self._user;
+        # проверяем, что полученный объект является экземпляром модели пользователя
+        self.assertTrue(isinstance(self._user, User_model))
+
+        # проверяем, что метод get_obj возвращает None,
+        # если по указанным фильтрам объект не определяется
+        _none_user_obj = self.user_proxy.manager.get_obj(filters={
+            "username": "nonexistent user"
+        })
+        self.assertIsNone(_none_user_obj)
+
         # проверяем, что, если объект модели не определяется однозначно в соответствии
         # с указанными фильтрами, вызывается соответствующее исключение;
         # для этого добавляем тестовому пользователю два юнита, отличающийся только
