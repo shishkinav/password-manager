@@ -77,7 +77,7 @@ class TestDBManager(TestManager):
 class TestUserManager(TestManager):
     def test_add_user(self):
         """Проверка создания пользователя в БД через ProxyAction.add_obj"""
-        # пользователь создан вызовом self.user_proxy.add_obj в setUp-методе
+        # пользователь создан вызовом self.user_proxy.add_obj в TestManager.setUp-методе
 
         # проверяем количество пользователей в БД
         _users = self.user_proxy.manager.get_objects(filters={})
@@ -86,18 +86,18 @@ class TestUserManager(TestManager):
 
         # проверяем, что имя пользователя сохранено корректно
         _user = self.user_proxy.manager.get_obj(filters={"username": self._login_user})
-        self.assertEqual(self._login_user, _user.__dict__.get("username"),
+        self.assertEqual(self._login_user, _user.username,
                          msg="Имя пользователя в БД не соответствует")
 
         # проверяем, что пароль пользователя сохранён корректно, а именно:
         # в поле password сохранён хэш(username + password)
         pass_hash = self.user_proxy.manager.generate_hash(self._login_user + self._password_user)
-        self.assertEqual(pass_hash, _user.__dict__.get("password"),
+        self.assertEqual(pass_hash, _user.password,
                          msg="Хэш пароля пользователя в БД не соответствует")
 
     def test_check_user(self):
         """Проверка наличия/отсутствия экземпляра пользователя в БД через ProxyAction.check_obj"""
-        # пользователь создан вызовом self.user_proxy.add_obj в setUp-методе
+        # пользователь создан вызовом self.user_proxy.add_obj в TestManager.setUp-методе
         # проверяем наличие экземпляра пользователя в БД
         self.assertTrue(self.user_proxy.check_obj(filters={"username": self._login_user}),
                         msg="Наличие экземпляра пользователя в БД не подтверждено")
@@ -108,7 +108,7 @@ class TestUserManager(TestManager):
 
     def test_check_user_password(self):
         """Проверка наличия в БД пользователя с указанными именем и паролем через ProxyAction.check_user_password"""
-        # пользователь создан вызовом self.user_proxy.add_obj в setUp-методе
+        # пользователь создан вызовом self.user_proxy.add_obj в TestManager.setUp-методе
         # проверяем наличие в БД пользователя с указанными именем и паролем
         self.assertTrue(self.user_proxy.check_user_password(
                         self._login_user, self._password_user),
@@ -125,7 +125,7 @@ class TestUserManager(TestManager):
 
     def test_add_next_users(self):
         """Проверка создания нескольких пользователей в БД через ProxyAction.add_obj"""
-        # первый пользователь создан вызовом self.user_proxy.add_obj в setUp-методе
+        # первый пользователь создан вызовом self.user_proxy.add_obj в TestManager.setUp-методе
 
         # проверяем, что добавление пользователя с логином уже существующего пользователя
         # вызывает исключение (имя пользователя должно быть уникальным)
@@ -151,7 +151,7 @@ class TestUserManager(TestManager):
         # проверяем, что для пользователей с одинаковыми паролями, но разными именами
         # хэши в поле "password", сохранённые в БД, отличаются
         _other_user = self.user_proxy.manager.get_obj(filters={"username": "other username"})
-        self.assertNotEqual(self._user.__dict__.get("password"), _other_user.__dict__.get("password"),
+        self.assertNotEqual(self._user.password, _other_user.password,
                             msg="Различие хэшей паролей пользователей в БД не подтверждено")
 
     def __user_checks_after_update_user(self, old_username, old_password=None, new_username=None, new_password=None):
@@ -337,15 +337,15 @@ class TestUnitManager(TestManager):
         # проверяем, что имя и логин юнита сохранены корректно
         _unit = self.unit_proxy.manager.get_obj(filters={"name": self._name_unit, "login": self._login_unit,
                                                          "user_id": self._user.id})
-        self.assertEqual(self._name_unit, _unit.__dict__.get("name"),
+        self.assertEqual(self._name_unit, _unit.name,
                          msg="Имя юнита в БД не соответствует")
-        self.assertEqual(self._login_unit, _unit.__dict__.get("login"),
+        self.assertEqual(self._login_unit, _unit.login,
                          msg="Логин юнита в БД не соответствует")
 
         # проверяем, что шифр пароля юнита сохранён корректно
         self.assertEqual(self._password_unit, self.unit_proxy.manager.decrypt_value(
                              username=self._login_user, password=self._password_user,
-                             enc=_unit.__dict__.get("secret")
+                             enc=_unit.secret
                          ),
                          msg="Шифр пароля юнита в БД не соответствует")
 
@@ -374,7 +374,7 @@ class TestUnitManager(TestManager):
                                                          "user_id": self._user.id})
         _other_unit = self.unit_proxy.manager.get_obj(filters={"name": self._name_unit, "login": "other login",
                                                                "user_id": self._user.id})
-        self.assertNotEqual(_unit.__dict__.get("secret"), _other_unit.__dict__.get("secret"),
+        self.assertNotEqual(_unit.secret, _other_unit.secret,
                             msg="Шифры паролей разных юнитов совпали")
 
     def test_check_unit(self):

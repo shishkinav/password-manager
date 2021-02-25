@@ -289,7 +289,7 @@ class ProxyAction:
                 username=_username, password=_password, enc=_obj.secret
             )
         raise IndexError("По указанным фильтрам не определён экземпляр юнита "
-                             "для извлечения пароля")
+                         "для извлечения пароля")
 
     def get_prepared_category(self, filters: dict):
         """Получить объект модели категории с учетом указанных фильтров.
