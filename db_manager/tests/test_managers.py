@@ -1,8 +1,6 @@
 import unittest
 from db_manager import managers as db_sql
 from db_manager.models import User as User_model
-from pathlib import Path
-from settings import FILE_TEST_DB
 
 
 class TestManager(unittest.TestCase):
@@ -11,9 +9,20 @@ class TestManager(unittest.TestCase):
     _name_unit = "test-name"
     _login_unit = "test-login"
     _password_unit = "T_5678!@#$"
-    user_proxy = db_sql.ProxyAction(db_sql.UserManager(prod_db=False))
-    unit_proxy = db_sql.ProxyAction(db_sql.UnitManager(prod_db=False))
-    category_proxy = db_sql.ProxyAction(db_sql.CategoryManager(prod_db=False))
+
+    @classmethod
+    def setUpClass(cls):
+        """Подготовка перед запуском тестов"""
+        # формируем объекты ProxyAction-класса для каждого
+        # типа менеджеров БД (при этом поднимается тестовая БД)
+        cls.user_proxy = db_sql.ProxyAction(db_sql.UserManager(prod_db=False))
+        cls.unit_proxy = db_sql.ProxyAction(db_sql.UnitManager(prod_db=False))
+        cls.category_proxy = db_sql.ProxyAction(db_sql.CategoryManager(prod_db=False))
+
+    @classmethod
+    def tearDownClass(cls):
+        """Удаление тестовой БД по завершении тестов"""
+        cls.user_proxy.manager.destroy_db()
 
     def setUp(self):
         """Подготовка перед каждым тестом"""
@@ -622,18 +631,3 @@ class TestUnitManager(TestManager):
         # проверяем, что контрольные юниты не затронуты
         # удалением тестового юнита
         self.__checks_for_control_units(_control_user.id)
-
-
-# чтобы увидеть содержимое тестовой БД по завершении тестов
-# нужно раскомментировать строку ниже
-# @unittest.skip("Temporary skip")
-class TestZapDB(TestManager):
-    def test_destroy_db(self):
-        """Проверка удаления тестовой БД"""
-        _err_msg = ""
-        try:
-            self.user_proxy.manager.destroy_db()
-        except Exception as exc:
-            _err_msg = "".join([exc.__class__.__name__, ": ", exc.__str__()])
-        self.assertFalse(Path(FILE_TEST_DB).is_file(),
-                         msg=f"Сбой удаления тестовой БД. {_err_msg}")
