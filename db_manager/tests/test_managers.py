@@ -1,5 +1,6 @@
 import unittest
 from db_manager import managers as db_sql
+from db_manager.models import User as User_model
 
 
 class TestManager(unittest.TestCase):
@@ -8,9 +9,20 @@ class TestManager(unittest.TestCase):
     _name_unit = "test-name"
     _login_unit = "test-login"
     _password_unit = "T_5678!@#$"
-    user_proxy = db_sql.ProxyAction(db_sql.UserManager(prod_db=False))
-    unit_proxy = db_sql.ProxyAction(db_sql.UnitManager(prod_db=False))
-    category_proxy = db_sql.ProxyAction(db_sql.CategoryManager(prod_db=False))
+
+    @classmethod
+    def setUpClass(cls):
+        """Подготовка перед запуском тестов"""
+        # формируем объекты ProxyAction-класса для каждого
+        # типа менеджеров БД (при этом поднимается тестовая БД)
+        cls.user_proxy = db_sql.ProxyAction(db_sql.UserManager(prod_db=False))
+        cls.unit_proxy = db_sql.ProxyAction(db_sql.UnitManager(prod_db=False))
+        cls.category_proxy = db_sql.ProxyAction(db_sql.CategoryManager(prod_db=False))
+
+    @classmethod
+    def tearDownClass(cls):
+        """Удаление тестовой БД по завершении тестов"""
+        cls.user_proxy.manager.destroy_db()
 
     def setUp(self):
         """Подготовка перед каждым тестом"""
@@ -28,18 +40,6 @@ class TestManager(unittest.TestCase):
         # получаем объект тестового пользователя к которому можем обращаться в последующих тестах
         self._user = self.user_proxy.manager.get_obj(filters={"username": self._login_user})
 
-    @classmethod
-    def tearDownClass(cls):
-        """Удаление тестовой БД по завершении тестов"""
-        # cls.user_proxy.manager.session.close_all()
-        # cls.user_proxy.manager.destroy_db()
-
-        # очищаем таблицы БД - временное решение по причине
-        # SADeprecationWarning: The Session.close_all() method is deprecated and will be removed in a future release.
-        cls.unit_proxy.delete_obj(filters={})
-        cls.category_proxy.delete_obj(filters={})
-        cls.user_proxy.delete_obj(filters={})
-
     def _add_test_unit(self, login=_login_unit):
         """Добавление тестового юнита тестовому пользователю в БД"""
         self.unit_proxy.add_obj({
@@ -53,10 +53,40 @@ class TestManager(unittest.TestCase):
         })
 
 
+class TestDBManager(TestManager):
+    def test_get_obj(self):
+        """Проверка получения объекта модели"""
+        # тестовый пользователь добавлен в БД в TestManager.setUp-методе;
+        # объект этого пользователя уже получен там же с помощью метода get_obj
+        # и сохранён в переменную self._user;
+        # проверяем, что полученный объект является экземпляром модели пользователя
+        self.assertTrue(isinstance(self._user, User_model))
+
+        # проверяем, что метод get_obj возвращает None,
+        # если по указанным фильтрам объект не определяется
+        _none_user_obj = self.user_proxy.manager.get_obj(filters={
+            "username": "nonexistent user"
+        })
+        self.assertIsNone(_none_user_obj)
+
+        # проверяем, что, если объект модели не определяется однозначно в соответствии
+        # с указанными фильтрами, вызывается соответствующее исключение;
+        # для этого добавляем тестовому пользователю два юнита, отличающийся только
+        # логином, но при получении объекта в фильтрах логин не указываем
+        self._add_test_unit()
+        self._add_test_unit(login="other login")
+        with self.assertRaisesRegex(Exception, ".*более одного экземпляра по указанным фильтрам",
+                                    msg="Несоответствие проверки однозначности "
+                                        "определения объекта модели"):
+            self.unit_proxy.manager.get_obj(filters={
+                "user_id": self._user.id,
+            })
+
+
 class TestUserManager(TestManager):
     def test_add_user(self):
         """Проверка создания пользователя в БД через ProxyAction.add_obj"""
-        # пользователь создан вызовом self.user_proxy.add_obj в setUp-методе
+        # пользователь создан вызовом self.user_proxy.add_obj в TestManager.setUp-методе
 
         # проверяем количество пользователей в БД
         _users = self.user_proxy.manager.get_objects(filters={})
@@ -65,18 +95,18 @@ class TestUserManager(TestManager):
 
         # проверяем, что имя пользователя сохранено корректно
         _user = self.user_proxy.manager.get_obj(filters={"username": self._login_user})
-        self.assertEqual(self._login_user, _user.__dict__.get("username"),
+        self.assertEqual(self._login_user, _user.username,
                          msg="Имя пользователя в БД не соответствует")
 
         # проверяем, что пароль пользователя сохранён корректно, а именно:
         # в поле password сохранён хэш(username + password)
         pass_hash = self.user_proxy.manager.generate_hash(self._login_user + self._password_user)
-        self.assertEqual(pass_hash, _user.__dict__.get("password"),
+        self.assertEqual(pass_hash, _user.password,
                          msg="Хэш пароля пользователя в БД не соответствует")
 
     def test_check_user(self):
         """Проверка наличия/отсутствия экземпляра пользователя в БД через ProxyAction.check_obj"""
-        # пользователь создан вызовом self.user_proxy.add_obj в setUp-методе
+        # пользователь создан вызовом self.user_proxy.add_obj в TestManager.setUp-методе
         # проверяем наличие экземпляра пользователя в БД
         self.assertTrue(self.user_proxy.check_obj(filters={"username": self._login_user}),
                         msg="Наличие экземпляра пользователя в БД не подтверждено")
@@ -87,7 +117,7 @@ class TestUserManager(TestManager):
 
     def test_check_user_password(self):
         """Проверка наличия в БД пользователя с указанными именем и паролем через ProxyAction.check_user_password"""
-        # пользователь создан вызовом self.user_proxy.add_obj в setUp-методе
+        # пользователь создан вызовом self.user_proxy.add_obj в TestManager.setUp-методе
         # проверяем наличие в БД пользователя с указанными именем и паролем
         self.assertTrue(self.user_proxy.check_user_password(
                         self._login_user, self._password_user),
@@ -104,7 +134,7 @@ class TestUserManager(TestManager):
 
     def test_add_next_users(self):
         """Проверка создания нескольких пользователей в БД через ProxyAction.add_obj"""
-        # первый пользователь создан вызовом self.user_proxy.add_obj в setUp-методе
+        # первый пользователь создан вызовом self.user_proxy.add_obj в TestManager.setUp-методе
 
         # проверяем, что добавление пользователя с логином уже существующего пользователя
         # вызывает исключение (имя пользователя должно быть уникальным)
@@ -130,7 +160,7 @@ class TestUserManager(TestManager):
         # проверяем, что для пользователей с одинаковыми паролями, но разными именами
         # хэши в поле "password", сохранённые в БД, отличаются
         _other_user = self.user_proxy.manager.get_obj(filters={"username": "other username"})
-        self.assertNotEqual(self._user.__dict__.get("password"), _other_user.__dict__.get("password"),
+        self.assertNotEqual(self._user.password, _other_user.password,
                             msg="Различие хэшей паролей пользователей в БД не подтверждено")
 
     def __user_checks_after_update_user(self, old_username, old_password=None, new_username=None, new_password=None):
@@ -316,15 +346,15 @@ class TestUnitManager(TestManager):
         # проверяем, что имя и логин юнита сохранены корректно
         _unit = self.unit_proxy.manager.get_obj(filters={"name": self._name_unit, "login": self._login_unit,
                                                          "user_id": self._user.id})
-        self.assertEqual(self._name_unit, _unit.__dict__.get("name"),
+        self.assertEqual(self._name_unit, _unit.name,
                          msg="Имя юнита в БД не соответствует")
-        self.assertEqual(self._login_unit, _unit.__dict__.get("login"),
+        self.assertEqual(self._login_unit, _unit.login,
                          msg="Логин юнита в БД не соответствует")
 
         # проверяем, что шифр пароля юнита сохранён корректно
         self.assertEqual(self._password_unit, self.unit_proxy.manager.decrypt_value(
                              username=self._login_user, password=self._password_user,
-                             enc=_unit.__dict__.get("secret")
+                             enc=_unit.secret
                          ),
                          msg="Шифр пароля юнита в БД не соответствует")
 
@@ -353,7 +383,7 @@ class TestUnitManager(TestManager):
                                                          "user_id": self._user.id})
         _other_unit = self.unit_proxy.manager.get_obj(filters={"name": self._name_unit, "login": "other login",
                                                                "user_id": self._user.id})
-        self.assertNotEqual(_unit.__dict__.get("secret"), _other_unit.__dict__.get("secret"),
+        self.assertNotEqual(_unit.secret, _other_unit.secret,
                             msg="Шифры паролей разных юнитов совпали")
 
     def test_check_unit(self):
@@ -422,20 +452,6 @@ class TestUnitManager(TestManager):
                 "password": self._password_user,
                 "name": self._name_unit,
                 "login": "nonexistent login"
-            })
-
-        # проверяем, что, если экземпляр юнита для извлечения пароля не определяется однозначно
-        # в соответствии с указанными фильтрами, вызывается соответствующее исключение;
-        # для этого добавляем пользователю ещё один юнит, отличающийся только логином
-        # от ранее добавленного, но в фильтрах логин не указываем
-        self._add_test_unit(login="other login")
-        with self.assertRaisesRegex(Exception, ".*более одного экземпляра по указанным фильтрам",
-                                    msg="Несоответствие проверки фильтров на однозначность "
-                                        "определения экземпляра юнита для извлечения пароля"):
-            self.unit_proxy.get_secret(filters={
-                "username": self._login_user,
-                "password": self._password_user,
-                "name": self._name_unit
             })
 
     def __get_control_user_with_unit(self):

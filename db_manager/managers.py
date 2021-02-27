@@ -1,5 +1,5 @@
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, close_all_sessions
 from settings import FILE_DB, FILE_TEST_DB
 from db_manager import models, schemas
 from pydantic import ValidationError
@@ -30,7 +30,7 @@ class DBManager:
 
     def destroy_db(self):
         """Закрытие сессии и удаление БД"""
-        self.session.close()
+        close_all_sessions()
         self.file_db.unlink()
 
     def get_objects(self, filters: dict) -> List[Any]:
@@ -289,7 +289,7 @@ class ProxyAction:
                 username=_username, password=_password, enc=_obj.secret
             )
         raise IndexError("По указанным фильтрам не определён экземпляр юнита "
-                             "для извлечения пароля")
+                         "для извлечения пароля")
 
     def get_prepared_category(self, filters: dict):
         """Получить объект модели категории с учетом указанных фильтров.
