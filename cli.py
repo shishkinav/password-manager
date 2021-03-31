@@ -1,24 +1,26 @@
 # cli.py
-import os
-import re
-from logging import ERROR, INFO
-
 import click
-import pyperclip
+import logging
+import log_manager.config
+from os import getlogin as os_getlogin
+from re import match as re_match
+from pyperclip import copy as pyperclip_copy
+from db_manager import managers as db_sql
 
-from database_manager.models import SQLAlchemyManager
-from log_manager.models import log_and_print
-from settings import FILE_DB
-from units_manager.models import UnitsComposition
+
+logger = logging.getLogger(__name__)
 
 
-def validate_new_user(ctx, param, value):
+def validate_new_username(ctx, param, value):
     """
     Check new user name
     """
-    if not re.match('^[A-Za-z][A-Za-z0-9_-]*$', value):
-        log_and_print('The user name must consist of English letters, '
-                      'numbers, and underscores. Start with a letter', level=ERROR)
+    if 'USER' in ctx.obj.keys() and value == '':
+        return value
+
+    if not re_match('^[A-Za-z][A-Za-z0-9_-]*$', value):
+        logger.error('The user name must consist of English letters, '
+                     'numbers, and underscores. Start with a letter.')
         exit(-1)
     else:
         return value
@@ -28,14 +30,16 @@ def validate_user(ctx, param, value):
     """
     Check user exists
     """
-    manager_obj = SQLAlchemyManager(ctx.obj['DB'], value)
-
-    if not manager_obj.user_obj.check_user():
-        log_and_print(f'User named "{value}" not exists', level=ERROR)
+    user_proxy = db_sql.ProxyAction(db_sql.UserManager(ctx.obj['prod_db']))
+    if not user_proxy.check_obj(filters={"username": value}):
+        logger.error(f'User named "{value}" not exists')
         exit(-1)
     elif 'PASSWORD' in ctx.obj.keys() \
-            and not manager_obj.user_obj.check_user_password(ctx.obj['PASSWORD']):
-        log_and_print(f'Incorrect password for user named "{value}"', level=ERROR)
+            and not user_proxy.check_user_password(
+                username=value,
+                password=ctx.obj['PASSWORD']
+            ):
+        logger.error(f'Incorrect password for user named "{value}"')
         exit(-1)
     else:
         ctx.obj['USER'] = value
@@ -51,27 +55,29 @@ def validate_password(ctx, param, value):
         return value
 
     user = ctx.obj['USER']
-    manager_obj = SQLAlchemyManager(ctx.obj['DB'], user)
-
-    if not manager_obj.user_obj.check_user_password(value):
-        log_and_print(f'Incorrect password for user named "{user}"', level=ERROR)
+    user_proxy = db_sql.ProxyAction(db_sql.UserManager(ctx.obj['prod_db']))
+    if not user_proxy.check_user_password(
+                username=user,
+                password=value
+            ):
+        logger.error(f'Incorrect password for user named "{user}"')
         exit(-1)
     else:
         return value
 
 
 def msg_login_exist(login, name):
-    log_and_print(f'login "{login}" with "{name}" name already exists', level=ERROR)
+    logger.error(f'login "{login}" with "{name}" name already exists')
 
 
 def msg_login_not_exist(login, name):
-    log_and_print(f'login "{login}" with "{name}" name not exists', level=ERROR)
+    logger.error(f'login "{login}" with "{name}" name not exists')
 
 
 user_argument = click.option('--user', '-u', prompt="Username",
                              help="Provide your username",
                              callback=validate_user,
-                             default=os.getlogin)
+                             default=os_getlogin)
 password_argument = click.option('--password', '-p', help="Provide your password",
                                  callback=validate_password,
                                  prompt=True, hide_input=True)
@@ -81,9 +87,9 @@ password_argument = click.option('--password', '-p', help="Provide your password
 # @click.option('-n/-not-name', help='print or not name')
 @click.option('-c/-not-category', help='print or not category')
 @click.option('-u/-not-url', help='print or not url')
-@click.option("--db", default=FILE_DB, required=False, hidden=True)
+@click.option('-prod_db/-test_db', default=True, help='which DB to use')
 @click.pass_context
-def cli(ctx, c, u, db):
+def cli(ctx, c, u, prod_db):
     """
     saverpwd is a multi-user, multi-platform command-line utility
     for storing and organizing passwords and another info for logins
@@ -120,15 +126,15 @@ def cli(ctx, c, u, db):
             'category': c,
             'url': u
         },
-        'DB': db,
+        'prod_db': prod_db,
     }
 
 
 @cli.command()
 @click.option('--user', '-u', prompt="Username",
               help="Provide your username",
-              callback=validate_new_user,
-              default=os.getlogin)
+              callback=validate_new_username,
+              default=os_getlogin)
 @click.option('--password', '-p', help="Provide your password",
               prompt=True, hide_input=True)
 @click.pass_context
@@ -136,25 +142,27 @@ def uadd(ctx, user, password):
     """
     add user command
     """
-    manager_obj = SQLAlchemyManager(ctx.obj['DB'], user)
-
-    if manager_obj.user_obj.check_user():
-        log_and_print(f'User named "{user}" already exists', level=ERROR)
+    user_proxy = db_sql.ProxyAction(db_sql.UserManager(ctx.obj['prod_db']))
+    if user_proxy.check_obj(filters={"username": user}):
+        logger.error(f'User named "{user}" already exists')
         exit(-1)
     else:
-        manager_obj.user_obj.add_user(password)
-        log_and_print(f'User named "{user}" created', level=INFO)
+        user_proxy.add_obj({
+            "username": user,
+            "password": password
+        })
+        logger.info(f'User named "{user}" created')
 
 
 @cli.command()
 @user_argument
 @password_argument
-@click.option('-nu', '--new-username', prompt="New username",
-              callback=validate_new_user, help="Provide new username")
+@click.option('-nu', '--new-username',
+              prompt="New username (Press 'Enter' for keep old username)",
+              default='', callback=validate_new_username, help="Provide new username")
 @click.option('-np', '--new-password',
               prompt="New password (Press 'Enter' for keep old password)",
-              default='',
-              help="Provide new password for user", hide_input=True)
+              default='', help="Provide new password for user", hide_input=True)
 @click.confirmation_option(prompt='Are you sure you want to update user data?')
 @click.pass_context
 def uupdate(ctx, user, password,
@@ -162,30 +170,39 @@ def uupdate(ctx, user, password,
     """
     update username (and password) command
     """
-    manager_obj = SQLAlchemyManager(ctx.obj['DB'], user)
-
-    new_password = None if new_password == '' else new_password
-    if manager_obj.user_obj.check_user(new_username) and not new_password:
-        log_and_print(f'User named "{new_username}" already exists '
-                      f'and no new password is given', level=ERROR)
+    user_proxy = db_sql.ProxyAction(db_sql.UserManager(ctx.obj['prod_db']))
+    if new_username != '' and new_password == '' \
+            and user_proxy.check_obj(filters={"username": new_username}):
+        logger.error(f'User named "{new_username}" already exists '
+                     f'and no new password is given')
     else:
-        manager_obj.user_obj.update_user(ctx.obj['DB'], password, new_username, new_password)
-        log_and_print(f'User "{user}" updated. New username is "{new_username}"',
-                      level=INFO)
+        data = {}
+        if new_username != '':
+            data["username"] = new_username
+        if new_password != '':
+            data["password"] = new_password
+        if data == {}:
+            logger.info(f'User not updated - nothing for update')
+        else:
+            data["current_password"] = password
+            user_proxy.update_obj(filters={"username": user}, data=data)
+            logger.info(f'User "{user}" updated')
+            if new_username != '':
+                logger.info(f'New username is "{new_username}"')
 
 
 @cli.command()
 @user_argument
 @password_argument
+@click.confirmation_option(prompt='Are you sure you want to delete all user data?')
 @click.pass_context
 def udelete(ctx, user, password):
     """
     delete user command
     """
-    manager_obj = SQLAlchemyManager(ctx.obj['DB'], user)
-
-    manager_obj.user_obj.del_user()
-    log_and_print(f'User named "{user}" deleted', level=INFO)
+    user_proxy = db_sql.ProxyAction(db_sql.UserManager(ctx.obj['prod_db']))
+    user_proxy.delete_obj(filters={"username": user})
+    logger.info(f'User named "{user}" deleted')
 
 
 @cli.command()
@@ -194,12 +211,11 @@ def ushow(ctx):
     """
     show users command
     """
-    manager_obj = SQLAlchemyManager(ctx.obj['DB'])
-
-    users = manager_obj.user_obj.all_users()
+    user_proxy = db_sql.ProxyAction(db_sql.UserManager(ctx.obj['prod_db']))
+    users = user_proxy.manager.get_objects(filters={})
     for user in users:
-        print(user)
-    log_and_print(f'Show users command is done', print_need=False, level=INFO)
+        print(user.username)
+    logger.info(f'Show users command is done')
 
 
 @cli.command()
@@ -213,14 +229,20 @@ def show(ctx, user, password, category):
     """
     show logins command
     """
-    manager_obj = SQLAlchemyManager(ctx.obj['DB'], user)
-
-    logins = manager_obj.unit_obj.get_logins(category)
-    units_composition_obj = UnitsComposition(logins)
-    units_composition_obj.prepare_data()
-    res_str = units_composition_obj.make_str_logins(ctx.obj['FLAGS'])
-    print(res_str)
-    log_and_print(f'Show logins command is done', print_need=False, level=INFO)
+    # manager_obj = SQLAlchemyManager(ctx.obj['DB'], user)
+    # logins = manager_obj.unit_obj.get_logins(category)
+    # units_composition_obj = UnitsComposition(logins)
+    # units_composition_obj.prepare_data()
+    # res_str = units_composition_obj.make_str_logins(ctx.obj['FLAGS'])
+    # print(res_str)
+    user_proxy = db_sql.ProxyAction(db_sql.UserManager(ctx.obj['prod_db']))
+    user_obj = user_proxy.manager.get_obj(filters={"username": user})
+    unit_proxy = db_sql.ProxyAction(db_sql.UnitManager(ctx.obj['prod_db']))
+    units = unit_proxy.manager.get_objects(filters={"user_id": user_obj.id})
+    # TODO Rewrite this using prettytable and include ctx.obj ['FLAGS']:
+    for unit in units:
+        print(unit.login)
+    logger.info(f'Show logins command is done')
 
 
 @cli.command()
@@ -233,11 +255,17 @@ def get(ctx, user, password, login, name):
     """
     get password by login command
     """
-    manager_obj = SQLAlchemyManager(ctx.obj['DB'], user)
-
-    if manager_obj.unit_obj.check_login(login, name):
-        pyperclip.copy(manager_obj.unit_obj.get_password(user, password, login, name))
-        log_and_print(f'Password is placed on the clipboard', level=INFO)
+    user_proxy = db_sql.ProxyAction(db_sql.UserManager(ctx.obj['prod_db']))
+    user_obj = user_proxy.manager.get_obj(filters={"username": user})
+    unit_proxy = db_sql.ProxyAction(db_sql.UnitManager(ctx.obj['prod_db']))
+    if unit_proxy.check_obj(filters={"user_id": user_obj.id, "login": login, "name": name}):
+        pyperclip_copy(unit_proxy.get_secret(filters={
+            "username": user,
+            "password": password,
+            "name": name,
+            "login": login
+        }))
+        logger.info(f'Password is placed on the clipboard')
     else:
         msg_login_not_exist(login, name)
         exit(-1)
@@ -251,13 +279,18 @@ def get(ctx, user, password, login, name):
 @click.pass_context
 def delete(ctx, user, password, login, name):
     """
-    delete login and password command
+    delete login command
     """
-    manager_obj = SQLAlchemyManager(ctx.obj['DB'], user)
-
-    if manager_obj.unit_obj.check_login(login, name):
-        manager_obj.unit_obj.delete_unit(login, name)
-        log_and_print(f'Login "{login}" deleted', level=INFO)
+    user_proxy = db_sql.ProxyAction(db_sql.UserManager(ctx.obj['prod_db']))
+    user_obj = user_proxy.manager.get_obj(filters={"username": user})
+    unit_proxy = db_sql.ProxyAction(db_sql.UnitManager(ctx.obj['prod_db']))
+    if unit_proxy.check_obj(filters={"user_id": user_obj.id, "login": login, "name": name}):
+        unit_proxy.delete_obj(filters={
+            "user_id": user_obj.id,
+            "login": login,
+            "name": name
+        })
+        logger.info(f'Login "{login}" deleted')
     else:
         msg_login_not_exist(login, name)
         exit(-1)
@@ -267,27 +300,40 @@ def delete(ctx, user, password, login, name):
 @user_argument
 @password_argument
 @click.option('-l', "--login", prompt="Login", help="Provide login")
-@click.option('-pl', '--password-for-login', prompt=True,
+@click.option('-pl', "--password-for-login", prompt=True,
               help="Provide password for login", hide_input=True)
 @click.option('-n', "--name", prompt="Name", help='name', default='default')
 @click.option('-c', "--category", help='"default" or skip for default category, optional',
-              default=None, required=False)
-@click.option('-ur', "--url", help='url, optional', default=None, required=False)
+              default='default', required=False)
+@click.option('-ur', "--url", help='url, optional', default='', required=False)
 @click.pass_context
 def add(ctx, user, password, login,
-        password_for_login, category, url, name):
+        password_for_login, name, category, url):
     """
-    add login and password command
+    add login command
     """
-    manager_obj = SQLAlchemyManager(ctx.obj['DB'], user)
-
-    if manager_obj.unit_obj.check_login(login, name):
+    user_proxy = db_sql.ProxyAction(db_sql.UserManager(ctx.obj['prod_db']))
+    user_obj = user_proxy.manager.get_obj(filters={"username": user})
+    unit_proxy = db_sql.ProxyAction(db_sql.UnitManager(ctx.obj['prod_db']))
+    category_proxy = db_sql.ProxyAction(db_sql.CategoryManager(ctx.obj['prod_db']))
+    if unit_proxy.check_obj(filters={"user_id": user_obj.id, "login": login, "name": name}):
         msg_login_exist(login, name)
         exit(-1)
     else:
-        category = 'default' if category is None else category
-        manager_obj.unit_obj.add_unit(user, password, login, password_for_login, name, category, url)
-        log_and_print(f'Login "{login}" added', level=INFO)
+        unit_proxy.add_obj({
+            "username": user,
+            "password": password,
+            "name": name,
+            "login": login,
+            "secret": password_for_login,
+            "user_id": user_obj.id,
+            "category_id": category_proxy.get_prepared_category({
+                "user_id": user_obj.id,
+                "name": category
+            }).id,
+            "url": url
+        })
+        logger.info(f'Login "{login}" added')
 
 
 @cli.command()
@@ -299,32 +345,51 @@ def add(ctx, user, password, login,
               default=None, required=False)
 @click.option('-nn', "--new-name", help='"default" or skip for old name, optional',
               default=None, required=False)
-@click.option('-pl', '--password-for-login',
+@click.option('-npl', "--new-password-for-login",
               prompt="New password for login (Press 'Enter' for keep old password)",
               default='',
               help="Provide new password for login", hide_input=True)
 @click.option('-nc', "--new-category", help='"default" or skip for old category, optional',
               default=None, required=False)
-@click.option('-ur', "--url", help='url, optional', default=None, required=False)
+@click.option('-nur', "--new-url", help='new url, optional', default=None, required=False)
 @click.pass_context
 def update(ctx, user, password, login, name,
-           new_login, new_name, password_for_login, new_category, url):
-    """Update unit"""
-
-    manager_obj = SQLAlchemyManager(ctx.obj['DB'], user)
-
-    new_login = login if new_login is None else new_login
-    new_name = name if new_name is None else new_name
-
-    if manager_obj.unit_obj.check_login(login, name):
+           new_login, new_name, new_password_for_login, new_category, new_url):
+    """
+    update login command
+    """
+    user_proxy = db_sql.ProxyAction(db_sql.UserManager(ctx.obj['prod_db']))
+    user_obj = user_proxy.manager.get_obj(filters={"username": user})
+    unit_proxy = db_sql.ProxyAction(db_sql.UnitManager(ctx.obj['prod_db']))
+    if unit_proxy.check_obj(filters={"user_id": user_obj.id, "login": login, "name": name}):
         if new_login != login or new_name != name:
-            if manager_obj.unit_obj.check_login(new_login, new_name):
+            if unit_proxy.check_obj(filters={"user_id": user_obj.id, "login": new_login, "name": new_name}):
                 msg_login_exist(new_login, new_name)
                 exit(-1)
-        password_for_login = None if password_for_login == '' else password_for_login
-        manager_obj.unit_obj.update_unit(user, password, login, name,
-                                         new_login, password_for_login, new_category, url, new_name)
-        log_and_print(f'Login "{login}" updated', level=INFO)
+        data = {}
+        if new_login:
+            data["login"] = new_login
+        if new_name:
+            data["name"] = new_name
+        if new_password_for_login != '':
+            data["secret"] = new_password_for_login
+            data["current_password"] = password
+        if new_category:
+            category_proxy = db_sql.ProxyAction(db_sql.CategoryManager(ctx.obj['prod_db']))
+            data["category_id"] = category_proxy.get_prepared_category({
+                "user_id": user_obj.id,
+                "name": new_category
+            }).id
+        if new_url:
+            data["url"] = new_url
+        if data == {}:
+            logger.info(f'Login not updated - nothing for update')
+            exit(-1)
+        unit_proxy.update_obj(
+            filters={"user_id": user_obj.id, "login": login, "name": name},
+            data=data
+        )
+        logger.info(f'Login "{login}" updated')
     else:
         msg_login_not_exist(login, name)
         exit(-1)
