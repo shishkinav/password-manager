@@ -48,7 +48,13 @@ LOGGING_CONFIG = {
                 'handlers': ['cli_log_file', 'console', 'errors'],
                 'level': 'DEBUG',
                 'propagate': False,
+            },
+            'cli': {
+                'handlers': ['cli_log_file', 'console', 'errors'],
+                'level': 'DEBUG',
+                'propagate': False,
             }
+
         }
     }
 
